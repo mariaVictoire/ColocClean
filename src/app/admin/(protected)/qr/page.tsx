@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
 import { getDefaultProperty } from "@/lib/property";
+import { roomSlug } from "@/lib/security/tokens";
 import { shortValidationPath } from "@/lib/whatsapp/messages";
 import { appConfig } from "@/config/app";
 
