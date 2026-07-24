@@ -1,19 +1,18 @@
 import { NextResponse } from "next/server";
-import { AuthError } from "next-auth";
 import bcrypt from "bcryptjs";
-import { signIn } from "@/lib/auth";
+import { encode } from "next-auth/jwt";
+import { appConfig } from "@/config/app";
 import { prisma } from "@/lib/db";
 import { loginSchema } from "@/lib/validators/auth";
 
 export const runtime = "nodejs";
 
-function isNextRedirect(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "digest" in error &&
-    String((error as { digest?: string }).digest).startsWith("NEXT_REDIRECT")
-  );
+const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
+
+function sessionCookieName() {
+  return process.env.NODE_ENV === "production"
+    ? `__Secure-${appConfig.slug}.session-token`
+    : `${appConfig.slug}.session-token`;
 }
 
 export async function POST(request: Request) {
@@ -28,6 +27,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const secret = process.env.AUTH_SECRET;
+    if (!secret) {
+      return NextResponse.json(
+        { error: "AUTH_SECRET manquant sur le serveur.", code: "SECRET" },
+        { status: 500 },
+      );
+    }
+
     const email = parsed.data.email.toLowerCase();
 
     let user;
@@ -37,8 +44,7 @@ export async function POST(request: Request) {
       console.error("[api/auth/login] database", error);
       return NextResponse.json(
         {
-          error:
-            "Base de données injoignable depuis Vercel. Vérifie DATABASE_URL (pooler session :5432).",
+          error: "Base de données injoignable. Vérifie DATABASE_URL.",
           code: "DB",
         },
         { status: 503 },
@@ -60,38 +66,37 @@ export async function POST(request: Request) {
       );
     }
 
-    try {
-      await signIn("credentials", {
-        email: parsed.data.email,
-        password: parsed.data.password,
-        redirect: false,
-      });
-    } catch (error) {
-      if (isNextRedirect(error)) {
-        return NextResponse.json({ ok: true });
-      }
-      if (error instanceof AuthError) {
-        return NextResponse.json(
-          { error: "Email ou mot de passe incorrect.", code: "AUTH" },
-          { status: 401 },
-        );
-      }
-      console.error("[api/auth/login] signIn", error);
-      return NextResponse.json(
-        {
-          error:
-            "Impossible de créer la session. Vérifie AUTH_SECRET et AUTH_URL.",
-          code: "SESSION",
-        },
-        { status: 500 },
-      );
-    }
+    const cookieName = sessionCookieName();
+    const token = await encode({
+      secret,
+      salt: cookieName,
+      maxAge: SESSION_MAX_AGE,
+      token: {
+        sub: user.id,
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+    });
 
-    return NextResponse.json({ ok: true });
+    const response = NextResponse.json({ ok: true });
+    response.cookies.set(cookieName, token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: SESSION_MAX_AGE,
+    });
+
+    return response;
   } catch (error) {
     console.error("[api/auth/login]", error);
     return NextResponse.json(
-      { error: "Connexion impossible. Vérifie la configuration serveur.", code: "UNKNOWN" },
+      {
+        error: "Connexion impossible. Vérifie la configuration serveur.",
+        code: "UNKNOWN",
+      },
       { status: 500 },
     );
   }
