@@ -24,9 +24,6 @@ const TASKS: Array<{
       "Nettoyer la table",
       "Balayer le sol",
       "Laver le sol",
-      "Vider la poubelle",
-      "Remplacer le sac-poubelle",
-      "Ranger les éléments laissés dans la cuisine",
     ],
   },
   {
