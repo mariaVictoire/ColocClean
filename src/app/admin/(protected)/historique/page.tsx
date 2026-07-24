@@ -63,9 +63,9 @@ export default async function HistoriquePage() {
             assignments.map((a) => (
               <li
                 key={a.id}
-                className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-5"
+                className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5"
               >
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <p className="font-medium text-stone-900">
                     {a.room.label} · {a.task.name}
                   </p>
@@ -74,6 +74,21 @@ export default async function HistoriquePage() {
                     {a.completedAt &&
                       ` · validé ${format(a.completedAt, "d MMM HH:mm", { locale: fr })}`}
                   </p>
+                  {a.photoUrl && (
+                    <a
+                      href={a.photoUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={a.photoUrl}
+                        alt={`Preuve ${a.room.label}`}
+                        className="h-20 w-28 rounded-lg object-cover"
+                      />
+                    </a>
+                  )}
                 </div>
                 <StatusBadge status={a.status} />
               </li>

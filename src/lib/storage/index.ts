@@ -1,11 +1,12 @@
 /**
  * Abstraction stockage photos.
  * Dev : local filesystem
- * Prod : vercel-blob (recommandé) | cloudinary | azure | s3
+ * Prod : supabase (recommandé) | vercel-blob | …
  */
 
 export type StorageProvider =
   | "local"
+  | "supabase"
   | "vercel-blob"
   | "cloudinary"
   | "azure"
@@ -57,6 +58,11 @@ export async function getStorageAdapter(): Promise<StorageAdapter> {
   if (provider === "local") {
     const { localStorageAdapter } = await import("./local");
     return localStorageAdapter;
+  }
+
+  if (provider === "supabase") {
+    const { supabaseStorageAdapter } = await import("./supabase");
+    return supabaseStorageAdapter;
   }
 
   if (provider === "vercel-blob") {

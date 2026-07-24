@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { AssignmentStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { parseRoomSlug } from "@/lib/security/tokens";
+import { assertValidPhoto, getStorageAdapter } from "@/lib/storage";
+import { whatsappDeepLink } from "@/lib/whatsapp/messages";
 
 export const runtime = "nodejs";
 
@@ -12,6 +14,7 @@ export async function POST(request: Request) {
     const token = String(form.get("token") ?? "");
     const slug = String(form.get("slug") ?? "");
     const comment = String(form.get("comment") ?? "").slice(0, 1000);
+    const photo = form.get("photo");
 
     const number = parseRoomSlug(slug);
     if (!assignmentId || !number || !/^[a-f0-9]{64}$/i.test(token)) {
@@ -40,12 +43,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Déjà validé." }, { status: 409 });
     }
 
-    if (!assignment.room.property.ownerWhatsappNumber) {
+    const property = assignment.room.property;
+    if (!property.ownerWhatsappNumber) {
       return NextResponse.json(
         { error: "WhatsApp du bailleur non configuré." },
         { status: 400 },
       );
     }
+
+    if (!(photo instanceof File) || photo.size <= 0) {
+      return NextResponse.json(
+        { error: "Une photo est obligatoire." },
+        { status: 400 },
+      );
+    }
+
+    const buffer = Buffer.from(await photo.arrayBuffer());
+    const mimeType = photo.type || "image/jpeg";
+    assertValidPhoto(mimeType, buffer.byteLength);
+
+    const storage = await getStorageAdapter();
+    const uploaded = await storage.upload(buffer, {
+      filename: photo.name || "photo.jpg",
+      mimeType,
+      folder: "validations",
+    });
 
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -61,7 +83,7 @@ export async function POST(request: Request) {
           status: AssignmentStatus.COMPLETED,
           completedAt: now,
           comment: comment || null,
-          photoUrl: null,
+          photoUrl: uploaded.url,
           clientIp: ip,
           userAgent,
         },
@@ -89,7 +111,21 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json({ ok: true });
+    const message = [
+      `✅ ${assignment.room.label} — ${assignment.task.name} terminé.`,
+      `Photo : ${uploaded.url}`,
+      comment.trim() ? `Commentaire : ${comment.trim()}` : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const whatsappUrl = whatsappDeepLink(property.ownerWhatsappNumber, message);
+
+    return NextResponse.json({
+      ok: true,
+      photoUrl: uploaded.url,
+      whatsappUrl,
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Erreur serveur.";

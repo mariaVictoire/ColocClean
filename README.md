@@ -134,21 +134,22 @@ Ou : importer le repo GitHub dans le dashboard Vercel.
 | `AUTH_SECRET` | `openssl rand -base64 32` |
 | `AUTH_URL` | `https://votre-app.vercel.app` |
 | `CRON_SECRET` | secret aléatoire (crons Vercel) |
-| `STORAGE_PROVIDER` | Optionnel — photos envoyées via WhatsApp, pas stockées sur le serveur |
+| `STORAGE_PROVIDER` | `supabase` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://xxx.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Clé **service_role** (Settings → API) — ne jamais exposer côté client |
 
 Le script `build` exécute `prisma migrate deploy` puis `next build`.
 
 Après le premier déploiement, mets à jour `AUTH_URL` avec l’URL Vercel réelle, puis redeploy.
 
-### 4. Photos (WhatsApp du bailleur)
+### 4. Photos (Supabase Storage + lien WhatsApp)
 
-Pas besoin de Blob / Supabase Storage pour le MVP.
+WhatsApp web **ne peut pas** joindre une photo automatiquement. ColocClean :
+1. enregistre la photo dans **Supabase Storage**
+2. ouvre WhatsApp avec un message contenant le **lien** de la photo
+3. affiche aussi la photo dans Admin → Historique
 
-1. Admin → **Chambres** → renseigner le **WhatsApp du bailleur**
-2. Le colocateur prend une photo à la validation
-3. Le téléphone ouvre le partage (ou WhatsApp) pour envoyer la photo + message au bailleur
-
-Sur mobile, choisir **WhatsApp** dans le menu de partage pour joindre la photo. Un lien `wa.me` (texte seul) est le repli si le partage n’est pas disponible.
+Créer le bucket : automatique au premier upload (bucket public `validation-photos`), ou manuellement dans Supabase → Storage.
 
 ### 5. Crons (Phase 3)
 
