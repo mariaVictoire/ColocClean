@@ -2,12 +2,38 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { whatsappDeepLink } from "@/lib/whatsapp/messages";
 
 type Item = {
   id: string;
   label: string;
 };
+
+async function sharePhotoOnly(file: File): Promise<"shared" | "aborted" | "unsupported"> {
+  if (typeof navigator === "undefined" || !navigator.canShare) {
+    return "unsupported";
+  }
+
+  const shareFile =
+    file.type && file.name
+      ? file
+      : new File([file], "preuve-menage.jpg", {
+          type: file.type || "image/jpeg",
+        });
+
+  if (!navigator.canShare({ files: [shareFile] })) {
+    return "unsupported";
+  }
+
+  try {
+    await navigator.share({ files: [shareFile] });
+    return "shared";
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return "aborted";
+    }
+    return "aborted";
+  }
+}
 
 export function ValidateForm({
   assignmentId,
@@ -15,9 +41,6 @@ export function ValidateForm({
   slug,
   items,
   ownerWhatsappNumber,
-  roomLabel,
-  taskName,
-  weekLabel,
 }: {
   assignmentId: string;
   token: string;
@@ -47,44 +70,6 @@ export function ValidateForm({
     return () => URL.revokeObjectURL(url);
   }, [photo]);
 
-  function buildMessage() {
-    let message = `✅ ${roomLabel} — ${taskName} terminé (semaine du ${weekLabel}).`;
-    if (comment.trim()) {
-      message += `\nCommentaire : ${comment.trim()}`;
-    }
-    return message;
-  }
-
-  async function sharePhotoWithMessage(file: File, text: string) {
-    if (typeof navigator === "undefined" || !navigator.canShare) return false;
-    const shareFile =
-      file.type && file.name
-        ? file
-        : new File([file], "preuve-menage.jpg", {
-            type: file.type || "image/jpeg",
-          });
-    if (!navigator.canShare({ files: [shareFile] })) return false;
-    try {
-      await navigator.share({
-        files: [shareFile],
-        text,
-        title: text,
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  function openLandlordWhatsApp(text: string) {
-    if (!ownerWhatsappNumber) return false;
-    const link = whatsappDeepLink(ownerWhatsappNumber, text);
-    if (!link) return false;
-    // Redirection directe vers la conversation du bailleur
-    window.location.href = link;
-    return true;
-  }
-
   function finishValidation(photoFile: File) {
     setError(null);
 
@@ -96,9 +81,23 @@ export function ValidateForm({
       return;
     }
 
-    const message = buildMessage();
-
     startTransition(async () => {
+      const shareResult = await sharePhotoOnly(photoFile);
+
+      if (shareResult === "aborted") {
+        setError("Envoi annulé. La tâche n’est pas validée.");
+        pendingSendRef.current = false;
+        return;
+      }
+
+      if (shareResult === "unsupported") {
+        setError(
+          "Impossible d’envoyer la photo depuis cet appareil. Utilisez un smartphone.",
+        );
+        pendingSendRef.current = false;
+        return;
+      }
+
       const body = new FormData();
       body.set("assignmentId", assignmentId);
       body.set("token", token);
@@ -118,12 +117,6 @@ export function ValidateForm({
         pendingSendRef.current = false;
         return;
       }
-
-      // 1) Partage photo + message (légende) si le téléphone le permet
-      await sharePhotoWithMessage(photoFile, message);
-
-      // 2) Toujours ouvrir WhatsApp directement chez le bailleur avec le message
-      openLandlordWhatsApp(message);
 
       pendingSendRef.current = false;
       router.refresh();
@@ -182,8 +175,8 @@ export function ValidateForm({
           Vous avez fait votre tâche ?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-teal-900/90">
-          Un seul bouton : ça ouvre l’appareil photo si besoin, valide la tâche,
-          puis envoie le justificatif sur WhatsApp du bailleur.
+          Prenez une photo, puis envoyez-la au bailleur via WhatsApp (choisissez
+          WhatsApp dans le partage).
         </p>
 
         <label className="mt-4 block text-sm font-medium text-stone-700">
@@ -233,9 +226,7 @@ export function ValidateForm({
           disabled={pending}
           className="touch-target mt-4 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 text-base font-semibold text-white disabled:opacity-60"
         >
-          {pending
-            ? "Envoi…"
-            : "Envoyer le justificatif et valider"}
+          {pending ? "Envoi…" : "Envoyer le justificatif et valider"}
         </button>
       </section>
     </div>
