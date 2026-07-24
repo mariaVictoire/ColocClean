@@ -1,10 +1,15 @@
 /**
  * Abstraction stockage photos.
  * Dev : local filesystem
- * Prod : Cloudinary | Azure Blob | S3 (à brancher via STORAGE_PROVIDER)
+ * Prod : vercel-blob (recommandé) | cloudinary | azure | s3
  */
 
-export type StorageProvider = "local" | "cloudinary" | "azure" | "s3";
+export type StorageProvider =
+  | "local"
+  | "vercel-blob"
+  | "cloudinary"
+  | "azure"
+  | "s3";
 
 export interface UploadedFile {
   url: string;
@@ -52,6 +57,11 @@ export async function getStorageAdapter(): Promise<StorageAdapter> {
   if (provider === "local") {
     const { localStorageAdapter } = await import("./local");
     return localStorageAdapter;
+  }
+
+  if (provider === "vercel-blob") {
+    const { vercelBlobStorageAdapter } = await import("./vercel-blob");
+    return vercelBlobStorageAdapter;
   }
 
   throw new Error(

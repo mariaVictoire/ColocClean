@@ -134,16 +134,27 @@ Ou : importer le repo GitHub dans le dashboard Vercel.
 | `AUTH_SECRET` | `openssl rand -base64 32` |
 | `AUTH_URL` | `https://votre-app.vercel.app` |
 | `CRON_SECRET` | secret aléatoire (crons Vercel) |
-| `STORAGE_PROVIDER` | `local` en MVP (photos optionnelles) ; `vercel-blob` recommandé ensuite |
+| `STORAGE_PROVIDER` | `vercel-blob` en prod ; `local` en dev uniquement |
+| `BLOB_READ_WRITE_TOKEN` | Auto si Blob Store lié au projet (sinon le coller depuis Storage) |
 
 Le script `build` exécute `prisma migrate deploy` puis `next build`.
 
 Après le premier déploiement, mets à jour `AUTH_URL` avec l’URL Vercel réelle, puis redeploy.
 
-### 4. Photos en production
+### 4. Photos en production (Vercel Blob)
 
 Sur Vercel, le disque est **éphémère** : `STORAGE_PROVIDER=local` ne convient pas.
-Prévoir Cloudinary ou Vercel Blob (Phase 4).
+
+1. Dashboard Vercel → projet → **Storage** → **Create Database/Store** → **Blob** (accès **public**)
+2. Connecter le store au projet (Production + Preview) → Vercel injecte `BLOB_READ_WRITE_TOKEN`
+3. Ajouter / mettre à jour : `STORAGE_PROVIDER=vercel-blob`
+4. Redeploy
+
+CLI (après `vercel login`) :
+
+```bash
+vercel blob create-store coloclean-photos --access public --yes --environment production --environment preview
+```
 
 ### 5. Crons (Phase 3)
 
