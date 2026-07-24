@@ -9,42 +9,6 @@ type Item = {
   label: string;
 };
 
-type ShareResult = "shared" | "aborted" | "unsupported";
-
-async function sharePhotoToWhatsApp(
-  photo: File,
-  text: string,
-): Promise<ShareResult> {
-  if (typeof navigator === "undefined" || !navigator.canShare) {
-    return "unsupported";
-  }
-
-  const file =
-    photo.type && photo.name
-      ? photo
-      : new File([photo], "preuve-menage.jpg", {
-          type: photo.type || "image/jpeg",
-        });
-
-  if (!navigator.canShare({ files: [file] })) {
-    return "unsupported";
-  }
-
-  try {
-    await navigator.share({
-      files: [file],
-      text,
-      title: "Preuve ménage",
-    });
-    return "shared";
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") {
-      return "aborted";
-    }
-    return "aborted";
-  }
-}
-
 export function ValidateForm({
   assignmentId,
   token,
@@ -70,8 +34,8 @@ export function ValidateForm({
   const [photo, setPhoto] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState<"capture" | "confirm">("capture");
   const [pending, startTransition] = useTransition();
+  const pendingSendRef = useRef(false);
 
   useEffect(() => {
     if (!photo) {
@@ -83,64 +47,57 @@ export function ValidateForm({
     return () => URL.revokeObjectURL(url);
   }, [photo]);
 
-  const proofMessage = (() => {
+  function buildMessage() {
     let message = `✅ ${roomLabel} — ${taskName} terminé (semaine du ${weekLabel}).`;
     if (comment.trim()) {
       message += `\nCommentaire : ${comment.trim()}`;
     }
     return message;
-  })();
-
-  function onPhotoPicked(file: File | null) {
-    setPhoto(file);
-    setError(null);
   }
 
-  function onStartSend(e: React.FormEvent) {
-    e.preventDefault();
+  async function sharePhotoWithMessage(file: File, text: string) {
+    if (typeof navigator === "undefined" || !navigator.canShare) return false;
+    const shareFile =
+      file.type && file.name
+        ? file
+        : new File([file], "preuve-menage.jpg", {
+            type: file.type || "image/jpeg",
+          });
+    if (!navigator.canShare({ files: [shareFile] })) return false;
+    try {
+      await navigator.share({
+        files: [shareFile],
+        text,
+        title: text,
+      });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  function openLandlordWhatsApp(text: string) {
+    if (!ownerWhatsappNumber) return false;
+    const link = whatsappDeepLink(ownerWhatsappNumber, text);
+    if (!link) return false;
+    // Redirection directe vers la conversation du bailleur
+    window.location.href = link;
+    return true;
+  }
+
+  function finishValidation(photoFile: File) {
     setError(null);
 
     if (!ownerWhatsappNumber) {
       setError(
         "Le WhatsApp du bailleur n’est pas configuré. Contactez le propriétaire.",
       );
-      return;
-    }
-    if (!photo) {
-      setError("Prenez une photo avant d’envoyer.");
+      pendingSendRef.current = false;
       return;
     }
 
-    startTransition(async () => {
-      const result = await sharePhotoToWhatsApp(photo, proofMessage);
+    const message = buildMessage();
 
-      if (result === "aborted") {
-        setError(
-          "Envoi annulé. La tâche n’est pas validée — renvoyez la photo.",
-        );
-        setStep("capture");
-        return;
-      }
-
-      if (result === "unsupported") {
-        const link = whatsappDeepLink(ownerWhatsappNumber, proofMessage);
-        if (!link) {
-          setError("Impossible d’ouvrir WhatsApp sur cet appareil.");
-          return;
-        }
-        window.open(link, "_blank", "noopener,noreferrer");
-        setStep("confirm");
-        setError(null);
-        return;
-      }
-
-      setStep("confirm");
-      setError(null);
-    });
-  }
-
-  function onConfirmSent() {
-    setError(null);
     startTransition(async () => {
       const body = new FormData();
       body.set("assignmentId", assignmentId);
@@ -158,20 +115,54 @@ export function ValidateForm({
 
       if (!res.ok) {
         setError(data?.error ?? "Validation impossible.");
+        pendingSendRef.current = false;
         return;
       }
 
+      // 1) Partage photo + message (légende) si le téléphone le permet
+      await sharePhotoWithMessage(photoFile, message);
+
+      // 2) Toujours ouvrir WhatsApp directement chez le bailleur avec le message
+      openLandlordWhatsApp(message);
+
+      pendingSendRef.current = false;
       router.refresh();
     });
   }
 
-  function onCancelConfirm() {
-    setStep("capture");
-    setError("Validation annulée. Renvoyez la photo pour valider.");
+  function onMainClick() {
+    setError(null);
+
+    if (!ownerWhatsappNumber) {
+      setError(
+        "Le WhatsApp du bailleur n’est pas configuré. Contactez le propriétaire.",
+      );
+      return;
+    }
+
+    if (!photo) {
+      pendingSendRef.current = true;
+      cameraRef.current?.click();
+      return;
+    }
+
+    finishValidation(photo);
+  }
+
+  function onPhotoPicked(file: File | null) {
+    if (!file) {
+      pendingSendRef.current = false;
+      return;
+    }
+    setPhoto(file);
+    setError(null);
+    if (pendingSendRef.current) {
+      finishValidation(file);
+    }
   }
 
   return (
-    <form onSubmit={onStartSend} className="mt-5 flex flex-col gap-4">
+    <div className="mt-5 flex flex-col gap-4">
       <section className="rounded-2xl border border-stone-200 bg-white/90 p-4">
         <h2 className="text-sm font-semibold text-stone-900">
           Rappel — ce qu’il faut faire
@@ -191,93 +182,40 @@ export function ValidateForm({
           Vous avez fait votre tâche ?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-teal-900/90">
-          1) Prenez une photo · 2) Envoyez-la au bailleur via WhatsApp · 3)
-          Confirmez l’envoi. Sans confirmation, la tâche reste non validée.
+          Un seul bouton : ça ouvre l’appareil photo si besoin, valide la tâche,
+          puis envoie le justificatif sur WhatsApp du bailleur.
         </p>
 
-        {step === "capture" && (
-          <>
-            <label className="mt-4 block text-sm font-medium text-stone-700">
-              Commentaire (optionnel)
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={2}
-                placeholder="Ex. : produit manquant, problème signalé…"
-                className="mt-1.5 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-base outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-700/30"
-              />
-            </label>
+        <label className="mt-4 block text-sm font-medium text-stone-700">
+          Commentaire (optionnel)
+          <textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            rows={2}
+            placeholder="Ex. : produit manquant, problème signalé…"
+            className="mt-1.5 w-full rounded-xl border border-stone-300 bg-white px-3.5 py-2.5 text-base outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-700/30"
+          />
+        </label>
 
-            <div className="mt-3">
-              <p className="text-sm font-medium text-stone-700">
-                Photo pour le bailleur (obligatoire)
-              </p>
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/heic"
+          capture="environment"
+          className="sr-only"
+          onChange={(e) => {
+            onPhotoPicked(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
 
-              {/* Input caméra : capture force l’appareil photo sur mobile */}
-              <input
-                ref={cameraRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/heic"
-                capture="environment"
-                className="sr-only"
-                onChange={(e) => {
-                  onPhotoPicked(e.target.files?.[0] ?? null);
-                  // Permet de reprendre une photo ensuite
-                  e.target.value = "";
-                }}
-              />
-
-              <button
-                type="button"
-                onClick={() => cameraRef.current?.click()}
-                className="touch-target mt-2 inline-flex w-full items-center justify-center rounded-xl border-2 border-dashed border-teal-600 bg-white text-base font-semibold text-teal-900"
-              >
-                {photo ? "Reprendre une photo" : "Ouvrir l’appareil photo"}
-              </button>
-
-              {previewUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={previewUrl}
-                  alt="Aperçu de la photo"
-                  className="mt-3 max-h-56 w-full rounded-xl object-cover"
-                />
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={pending || !photo}
-              className="touch-target mt-4 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 text-base font-semibold text-white disabled:opacity-60"
-            >
-              {pending ? "Ouverture WhatsApp…" : "Envoyer la photo sur WhatsApp"}
-            </button>
-          </>
-        )}
-
-        {step === "confirm" && (
-          <div className="mt-4 space-y-3">
-            <p className="rounded-xl bg-white/80 px-3 py-2 text-sm text-teal-950">
-              Avez-vous bien <strong>envoyé</strong> le message avec la photo au
-              bailleur dans WhatsApp ?
-            </p>
-            <button
-              type="button"
-              onClick={onConfirmSent}
-              disabled={pending}
-              className="touch-target inline-flex w-full items-center justify-center rounded-xl bg-teal-700 text-base font-semibold text-white disabled:opacity-60"
-            >
-              {pending ? "Validation…" : "Oui, j’ai envoyé — valider la tâche"}
-            </button>
-            <button
-              type="button"
-              onClick={onCancelConfirm}
-              disabled={pending}
-              className="touch-target inline-flex w-full items-center justify-center rounded-xl border border-stone-300 bg-white text-base font-medium text-stone-800 disabled:opacity-60"
-            >
-              Non, annuler
-            </button>
-          </div>
+        {previewUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={previewUrl}
+            alt="Aperçu de la photo"
+            className="mt-3 max-h-48 w-full rounded-xl object-cover"
+          />
         )}
 
         {error && (
@@ -288,7 +226,18 @@ export function ValidateForm({
             {error}
           </p>
         )}
+
+        <button
+          type="button"
+          onClick={onMainClick}
+          disabled={pending}
+          className="touch-target mt-4 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 text-base font-semibold text-white disabled:opacity-60"
+        >
+          {pending
+            ? "Envoi…"
+            : "Envoyer le justificatif et valider"}
+        </button>
       </section>
-    </form>
+    </div>
   );
 }
