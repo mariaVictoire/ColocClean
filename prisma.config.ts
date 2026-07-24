@@ -2,11 +2,12 @@ import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
 /**
- * Sur Vercel, `postinstall` → `prisma generate` tourne avant que l’app
- * n’ait besoin d’une vraie DB. Un placeholder suffit pour generate ;
- * migrate/runtime exigent les vraies variables Vercel.
+ * Migrations CLI → préférer DIRECT_URL (session pooler :5432).
+ * Runtime Prisma Client → DATABASE_URL (transaction :6543) via schema.prisma.
+ * Placeholder uniquement pour `prisma generate` sans secrets.
  */
-const databaseUrl =
+const migrateUrl =
+  process.env.DIRECT_URL ??
   process.env.DATABASE_URL ??
   "postgresql://postgres:postgres@127.0.0.1:5432/postgres?schema=public";
 
@@ -18,6 +19,6 @@ export default defineConfig({
   },
   engine: "classic",
   datasource: {
-    url: databaseUrl,
+    url: migrateUrl,
   },
 });
