@@ -50,6 +50,12 @@ export const authConfig = {
         process.env.NODE_ENV === "production"
           ? `__Secure-${appConfig.slug}.session-token`
           : `${appConfig.slug}.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
     },
   },
 } satisfies NextAuthConfig;
