@@ -149,7 +149,12 @@ export default async function PublicRoomPage({ params }: PageProps) {
             assignmentId={assignment.id}
             token={token}
             slug={slug}
-            photoRequired={room.property.photoRequired}
+            ownerWhatsappNumber={room.property.ownerWhatsappNumber}
+            roomLabel={room.label}
+            taskName={assignment.task.name}
+            weekLabel={format(assignment.weeklySchedule.weekStart, "d MMMM", {
+              locale: fr,
+            })}
             items={assignment.task.checklistItems.map((item) => ({
               id: item.id,
               label: item.label,

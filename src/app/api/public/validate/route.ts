@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { AssignmentStatus } from "@prisma/client";
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
 import { prisma } from "@/lib/db";
 import { parseRoomSlug } from "@/lib/security/tokens";
-import { whatsappDeepLink } from "@/lib/whatsapp/messages";
 
 export const runtime = "nodejs";
 
@@ -24,7 +21,7 @@ export async function POST(request: Request) {
     const assignment = await prisma.assignment.findUnique({
       where: { id: assignmentId },
       include: {
-        room: true,
+        room: { include: { property: true } },
         task: { include: { checklistItems: true } },
         weeklySchedule: true,
       },
@@ -43,9 +40,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Déjà validé." }, { status: 409 });
     }
 
-    const property = await prisma.property.findUniqueOrThrow({
-      where: { id: assignment.room.propertyId },
-    });
+    if (!assignment.room.property.ownerWhatsappNumber) {
+      return NextResponse.json(
+        { error: "WhatsApp du bailleur non configuré." },
+        { status: 400 },
+      );
+    }
 
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -89,24 +89,7 @@ export async function POST(request: Request) {
       }
     });
 
-    const weekLabel = format(assignment.weeklySchedule.weekStart, "d MMMM", {
-      locale: fr,
-    });
-    let message = `✅ ${assignment.room.label} — ${assignment.task.name} terminé (semaine du ${weekLabel}).`;
-    if (comment.trim()) {
-      message += `\nCommentaire : ${comment.trim()}`;
-    }
-    message += "\n(Photo jointe si possible)";
-
-    const whatsappUrl = property.ownerWhatsappNumber
-      ? whatsappDeepLink(property.ownerWhatsappNumber, message)
-      : null;
-
-    return NextResponse.json({
-      ok: true,
-      whatsappUrl,
-      message,
-    });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Erreur serveur.";
