@@ -8,6 +8,35 @@ type Item = {
   label: string;
 };
 
+async function sharePhoto(
+  file: File,
+): Promise<"shared" | "aborted" | "unsupported"> {
+  if (typeof navigator === "undefined" || !navigator.canShare) {
+    return "unsupported";
+  }
+
+  const shareFile =
+    file.type && file.name
+      ? file
+      : new File([file], "preuve-menage.jpg", {
+          type: file.type || "image/jpeg",
+        });
+
+  if (!navigator.canShare({ files: [shareFile] })) {
+    return "unsupported";
+  }
+
+  try {
+    await navigator.share({ files: [shareFile] });
+    return "shared";
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return "aborted";
+    }
+    return "aborted";
+  }
+}
+
 export function ValidateForm({
   assignmentId,
   token,
@@ -55,6 +84,24 @@ export function ValidateForm({
     }
 
     startTransition(async () => {
+      // 1) Partage de la vraie photo (choisir WhatsApp → le bailleur)
+      const shareResult = await sharePhoto(photoFile);
+
+      if (shareResult === "aborted") {
+        setError("Envoi annulé. La tâche n’est pas validée.");
+        pendingSendRef.current = false;
+        return;
+      }
+
+      if (shareResult === "unsupported") {
+        setError(
+          "Le partage photo n’est pas dispo sur cet appareil. Utilisez un smartphone.",
+        );
+        pendingSendRef.current = false;
+        return;
+      }
+
+      // 2) Validation seulement si le partage a bien abouti
       const body = new FormData();
       body.set("assignmentId", assignmentId);
       body.set("token", token);
@@ -68,21 +115,15 @@ export function ValidateForm({
       });
       const data = (await res.json().catch(() => null)) as {
         error?: string;
-        whatsappUrl?: string | null;
       } | null;
 
       if (!res.ok) {
-        setError(data?.error ?? "Validation impossible.");
+        setError(data?.error ?? "Photo envoyée, mais validation impossible.");
         pendingSendRef.current = false;
         return;
       }
 
       pendingSendRef.current = false;
-
-      if (data?.whatsappUrl) {
-        window.location.href = data.whatsappUrl;
-      }
-
       router.refresh();
     });
   }
@@ -139,8 +180,8 @@ export function ValidateForm({
           Vous avez fait votre tâche ?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-teal-900/90">
-          Prenez une photo : elle est enregistrée, puis WhatsApp s’ouvre avec le
-          lien de la photo pour le bailleur.
+          Prenez une photo, puis choisissez <strong>WhatsApp</strong> et le
+          bailleur pour envoyer l’image. La tâche n’est validée qu’après l’envoi.
         </p>
 
         <label className="mt-4 block text-sm font-medium text-stone-700">
@@ -190,7 +231,7 @@ export function ValidateForm({
           disabled={pending}
           className="touch-target mt-4 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 text-base font-semibold text-white disabled:opacity-60"
         >
-          {pending ? "Envoi de la photo…" : "Envoyer le justificatif et valider"}
+          {pending ? "Envoi…" : "Envoyer la photo et valider"}
         </button>
       </section>
     </div>

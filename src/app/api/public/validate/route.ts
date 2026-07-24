@@ -3,7 +3,6 @@ import { AssignmentStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { parseRoomSlug } from "@/lib/security/tokens";
 import { assertValidPhoto, getStorageAdapter } from "@/lib/storage";
-import { whatsappDeepLink } from "@/lib/whatsapp/messages";
 
 export const runtime = "nodejs";
 
@@ -62,12 +61,20 @@ export async function POST(request: Request) {
     const mimeType = photo.type || "image/jpeg";
     assertValidPhoto(mimeType, buffer.byteLength);
 
-    const storage = await getStorageAdapter();
-    const uploaded = await storage.upload(buffer, {
-      filename: photo.name || "photo.jpg",
-      mimeType,
-      folder: "validations",
-    });
+    let photoUrl: string | null = null;
+    try {
+      const storage = await getStorageAdapter();
+      const uploaded = await storage.upload(buffer, {
+        filename: photo.name || "photo.jpg",
+        mimeType,
+        folder: "validations",
+      });
+      photoUrl = uploaded.url;
+    } catch (storageError) {
+      // Le partage WhatsApp côté téléphone reste la preuve principale ;
+      // le stockage serveur est un bonus (historique).
+      console.warn("[validate] stockage photo:", storageError);
+    }
 
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -83,7 +90,7 @@ export async function POST(request: Request) {
           status: AssignmentStatus.COMPLETED,
           completedAt: now,
           comment: comment || null,
-          photoUrl: uploaded.url,
+          photoUrl,
           clientIp: ip,
           userAgent,
         },
@@ -111,21 +118,7 @@ export async function POST(request: Request) {
       }
     });
 
-    const message = [
-      `✅ ${assignment.room.label} — ${assignment.task.name} terminé.`,
-      `Photo : ${uploaded.url}`,
-      comment.trim() ? `Commentaire : ${comment.trim()}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    const whatsappUrl = whatsappDeepLink(property.ownerWhatsappNumber, message);
-
-    return NextResponse.json({
-      ok: true,
-      photoUrl: uploaded.url,
-      whatsappUrl,
-    });
+    return NextResponse.json({ ok: true, photoUrl });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Erreur serveur.";
