@@ -1,9 +1,10 @@
 "use server";
 
-import { AuthError } from "next-auth";
-import { isRedirectError } from "next/dist/client/components/redirect-error";
-import { signIn } from "@/lib/auth";
+import bcrypt from "bcryptjs";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/db";
 import { loginSchema } from "@/lib/validators/auth";
+import { createAppSession } from "@/lib/session";
 
 export type LoginState = {
   error?: string;
@@ -22,27 +23,43 @@ export async function loginAction(
     return { error: "Identifiants invalides." };
   }
 
-  try {
-    await signIn("credentials", {
-      email: parsed.data.email,
-      password: parsed.data.password,
-      redirectTo: "/admin",
-    });
-  } catch (error) {
-    if (isRedirectError(error)) {
-      throw error;
-    }
-
-    if (error instanceof AuthError) {
-      if (error.type === "CredentialsSignin") {
-        return { error: "Email ou mot de passe incorrect." };
-      }
-      return { error: `Erreur auth (${error.type}).` };
-    }
-
-    console.error("[loginAction]", error);
-    return { error: "Connexion impossible. Réessaie." };
+  if (!process.env.AUTH_SECRET) {
+    return { error: "AUTH_SECRET manquant sur Vercel." };
   }
 
-  return {};
+  const email = parsed.data.email.toLowerCase();
+
+  let user;
+  try {
+    user = await prisma.user.findUnique({ where: { email } });
+  } catch (error) {
+    console.error("[loginAction] db", error);
+    return {
+      error:
+        "Base de données injoignable. Vérifie DATABASE_URL (pooler :5432).",
+    };
+  }
+
+  if (!user) {
+    return { error: "Email ou mot de passe incorrect." };
+  }
+
+  const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
+  if (!valid) {
+    return { error: "Email ou mot de passe incorrect." };
+  }
+
+  try {
+    await createAppSession({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+  } catch (error) {
+    console.error("[loginAction] session", error);
+    return { error: "Impossible de créer la session (AUTH_SECRET ?)." };
+  }
+
+  redirect("/admin");
 }

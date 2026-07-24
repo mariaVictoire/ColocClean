@@ -1,11 +1,35 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { appConfig } from "@/config/app";
 
-/**
- * Middleware minimal : pas de redirection depuis /connexion.
- * La session réelle est vérifiée dans requireOwner() (server).
- */
-export function middleware(_req: NextRequest) {
+export function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  const isAuthPage =
+    pathname.startsWith("/admin/connexion") ||
+    pathname.startsWith("/admin/mot-de-passe-oublie");
+
+  if (isAuthPage) {
+    return NextResponse.next();
+  }
+
+  if (!pathname.startsWith("/admin")) {
+    return NextResponse.next();
+  }
+
+  const secure = `__Secure-${appConfig.slug}.session-token`;
+  const plain = `${appConfig.slug}.session-token`;
+  const hasSession = Boolean(
+    req.cookies.get(secure)?.value || req.cookies.get(plain)?.value,
+  );
+
+  if (!hasSession) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/admin/connexion";
+    url.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(url);
+  }
+
   return NextResponse.next();
 }
 

@@ -1,21 +1,14 @@
-import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { getAppSession } from "@/lib/session";
 
 export async function requireOwner() {
-  let session = null;
-  try {
-    session = await auth();
-  } catch (error) {
-    console.error("[requireOwner] auth() failed", error);
-    redirect("/admin/connexion");
-  }
+  const session = await getAppSession();
 
   if (!session?.user?.email) {
     redirect("/admin/connexion");
   }
 
-  const role = session.user.role;
-  if (role !== "OWNER" && role !== "ADMIN") {
+  if (session.user.role !== "OWNER" && session.user.role !== "ADMIN") {
     redirect("/admin/connexion");
   }
 
@@ -23,9 +16,5 @@ export async function requireOwner() {
 }
 
 export async function getOptionalSession() {
-  try {
-    return await auth();
-  } catch {
-    return null;
-  }
+  return getAppSession();
 }
