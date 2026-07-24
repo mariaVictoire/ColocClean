@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { whatsappDeepLink } from "@/lib/whatsapp/messages";
 
 type Item = {
@@ -65,11 +65,23 @@ export function ValidateForm({
   weekLabel: string;
 }) {
   const router = useRouter();
+  const cameraRef = useRef<HTMLInputElement>(null);
   const [comment, setComment] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [step, setStep] = useState<"capture" | "confirm">("capture");
   const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!photo) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(photo);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [photo]);
 
   const proofMessage = (() => {
     let message = `✅ ${roomLabel} — ${taskName} terminé (semaine du ${weekLabel}).`;
@@ -78,6 +90,11 @@ export function ValidateForm({
     }
     return message;
   })();
+
+  function onPhotoPicked(file: File | null) {
+    setPhoto(file);
+    setError(null);
+  }
 
   function onStartSend(e: React.FormEvent) {
     e.preventDefault();
@@ -191,21 +208,46 @@ export function ValidateForm({
               />
             </label>
 
-            <label className="mt-3 block text-sm font-medium text-stone-700">
-              Photo pour le bailleur (obligatoire)
+            <div className="mt-3">
+              <p className="text-sm font-medium text-stone-700">
+                Photo pour le bailleur (obligatoire)
+              </p>
+
+              {/* Input caméra : capture force l’appareil photo sur mobile */}
               <input
+                ref={cameraRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/heic"
                 capture="environment"
-                required
-                onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-                className="mt-1.5 block w-full text-sm text-stone-600 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-teal-900"
+                className="sr-only"
+                onChange={(e) => {
+                  onPhotoPicked(e.target.files?.[0] ?? null);
+                  // Permet de reprendre une photo ensuite
+                  e.target.value = "";
+                }}
               />
-            </label>
+
+              <button
+                type="button"
+                onClick={() => cameraRef.current?.click()}
+                className="touch-target mt-2 inline-flex w-full items-center justify-center rounded-xl border-2 border-dashed border-teal-600 bg-white text-base font-semibold text-teal-900"
+              >
+                {photo ? "Reprendre une photo" : "Ouvrir l’appareil photo"}
+              </button>
+
+              {previewUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewUrl}
+                  alt="Aperçu de la photo"
+                  className="mt-3 max-h-56 w-full rounded-xl object-cover"
+                />
+              )}
+            </div>
 
             <button
               type="submit"
-              disabled={pending}
+              disabled={pending || !photo}
               className="touch-target mt-4 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 text-base font-semibold text-white disabled:opacity-60"
             >
               {pending ? "Ouverture WhatsApp…" : "Envoyer la photo sur WhatsApp"}
