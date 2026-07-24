@@ -37,8 +37,12 @@ export function LoginForm() {
     if (!response.ok) {
       const data = (await response.json().catch(() => null)) as {
         error?: string;
+        code?: string;
       } | null;
-      setServerError(data?.error ?? "Connexion impossible.");
+      setServerError(
+        data?.error ??
+          "Connexion impossible. Réessaie après le déploiement.",
+      );
       return;
     }
 
