@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { encode } from "next-auth/jwt";
-import { appConfig } from "@/config/app";
 import { prisma } from "@/lib/db";
 import { loginSchema } from "@/lib/validators/auth";
 
@@ -11,8 +11,8 @@ const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 
 function sessionCookieName() {
   return process.env.NODE_ENV === "production"
-    ? `__Secure-${appConfig.slug}.session-token`
-    : `${appConfig.slug}.session-token`;
+    ? "__Secure-authjs.session-token"
+    : "authjs.session-token";
 }
 
 export async function POST(request: Request) {
@@ -80,8 +80,8 @@ export async function POST(request: Request) {
       },
     });
 
-    const response = NextResponse.json({ ok: true });
-    response.cookies.set(cookieName, token, {
+    const jar = await cookies();
+    jar.set(cookieName, token, {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       maxAge: SESSION_MAX_AGE,
     });
 
-    return response;
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[api/auth/login]", error);
     return NextResponse.json(

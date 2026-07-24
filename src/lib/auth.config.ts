@@ -1,9 +1,8 @@
 import type { NextAuthConfig } from "next-auth";
-import { appConfig } from "@/config/app";
 
 /**
- * Config Auth compatible Edge (middleware).
- * Les providers Credentials (Prisma/bcrypt) restent dans auth.ts.
+ * Config Auth compatible Edge.
+ * Cookies = noms Auth.js v5 par défaut (authjs.*).
  */
 export const authConfig = {
   trustHost: true,
@@ -51,20 +50,6 @@ export const authConfig = {
         }
       }
       return session;
-    },
-  },
-  cookies: {
-    sessionToken: {
-      name:
-        process.env.NODE_ENV === "production"
-          ? `__Secure-${appConfig.slug}.session-token`
-          : `${appConfig.slug}.session-token`,
-      options: {
-        httpOnly: true,
-        sameSite: "lax",
-        path: "/",
-        secure: process.env.NODE_ENV === "production",
-      },
     },
   },
 } satisfies NextAuthConfig;
