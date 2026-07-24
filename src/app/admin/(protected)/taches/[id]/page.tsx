@@ -64,12 +64,7 @@ export default async function TacheDetailPage({
               <span className="mt-0.5 w-6 shrink-0 text-xs font-semibold text-teal-700">
                 {String(index + 1).padStart(2, "0")}
               </span>
-              <span>
-                {item.label}
-                {item.isRequired && (
-                  <span className="ml-1 text-xs text-stone-400">requis</span>
-                )}
-              </span>
+              <span>{item.label}</span>
             </li>
           ))}
         </ol>

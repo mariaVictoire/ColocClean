@@ -29,19 +29,13 @@ const TASKS: Array<{
   {
     name: "Salle de bain (sans lavabo)",
     description:
-      "Salle de bain sans lavabo : douche/baignoire, surfaces et sol.",
+      "Salle de bain sans lavabo : douche, surfaces et sol.",
     difficulty: 4,
     checklist: [
-      "Nettoyer la douche ou la baignoire",
+      "Nettoyer la douche",
       "Nettoyer les robinets",
-      "Retirer les cheveux",
       "Nettoyer les surfaces et les murs accessibles",
-      "Désinfecter la poignée de porte",
-      "Désinfecter les interrupteurs",
-      "Balayer le sol",
-      "Laver le sol",
-      "Vider la poubelle si présente",
-      "Ranger les produits laissés dans la pièce",
+      "Essuyer poignée et interrupteur",
     ],
   },
   {
@@ -61,8 +55,6 @@ const TASKS: Array<{
       "Nettoyer les surfaces",
       "Balayer le sol",
       "Laver le sol",
-      "Vider la poubelle",
-      "Ranger les produits laissés dans la pièce",
     ],
   },
   {
@@ -75,12 +67,8 @@ const TASKS: Array<{
       "Nettoyer le lavabo",
       "Nettoyer le miroir",
       "Nettoyer les robinets",
-      "Désinfecter la poignée de porte",
-      "Désinfecter les interrupteurs",
       "Balayer le sol",
       "Laver le sol",
-      "Vider la poubelle",
-      "Vérifier la présence de papier toilette",
     ],
   },
   {
