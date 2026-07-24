@@ -1,27 +1,22 @@
 import { spawnSync } from "node:child_process";
 
 /**
- * Sur Vercel, certaines variables peuvent manquer au moment du build.
- * Prisma exige DIRECT_URL (schema.prisma) : on le dérive de DATABASE_URL si besoin.
+ * Build Vercel :
+ * - Les migrations sont déjà appliquées sur Supabase (en local).
+ * - On ne bloque plus le build si DATABASE_URL manque ici ;
+ *   l'app en runtime en aura besoin (à configurer dans Vercel).
  */
 console.log("[build] env present:", {
   DATABASE_URL: Boolean(process.env.DATABASE_URL),
   DIRECT_URL: Boolean(process.env.DIRECT_URL),
   AUTH_SECRET: Boolean(process.env.AUTH_SECRET),
+  AUTH_URL: Boolean(process.env.AUTH_URL),
   VERCEL_ENV: process.env.VERCEL_ENV ?? "(none)",
+  VERCEL_URL: process.env.VERCEL_URL ?? "(none)",
 });
 
-if (!process.env.DATABASE_URL) {
-  console.error(
-    "Missing DATABASE_URL.\n" +
-      "In Vercel → Settings → Environment Variables, each variable must have Production checked (not only Development), then Redeploy.",
-  );
-  process.exit(1);
-}
-
-if (!process.env.DIRECT_URL) {
+if (!process.env.DIRECT_URL && process.env.DATABASE_URL) {
   process.env.DIRECT_URL = process.env.DATABASE_URL;
-  console.warn("DIRECT_URL missing — using DATABASE_URL as fallback");
 }
 
 function run(command, args) {
@@ -35,5 +30,14 @@ function run(command, args) {
   }
 }
 
-run("npx", ["prisma", "migrate", "deploy"]);
+// Migrations : uniquement si DATABASE_URL est bien injectée par Vercel
+if (process.env.DATABASE_URL) {
+  run("npx", ["prisma", "migrate", "deploy"]);
+} else {
+  console.warn(
+    "[build] DATABASE_URL absent au build — skip migrate deploy. " +
+      "Vérifie Settings → Environment Variables sur le BON projet Vercel, puis Redeploy.",
+  );
+}
+
 run("npx", ["next", "build"]);
