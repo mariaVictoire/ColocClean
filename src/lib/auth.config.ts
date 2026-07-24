@@ -34,12 +34,21 @@ export const authConfig = {
         token.id = user.id!;
         token.role = (user as { role?: string }).role ?? "OWNER";
       }
+      if (!token.id && token.sub) {
+        token.id = token.sub;
+      }
+      if (!token.role) {
+        token.role = "OWNER";
+      }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.id = (token.id as string) ?? (token.sub as string) ?? "";
+        session.user.role = (token.role as string) ?? "OWNER";
+        if (typeof token.email === "string") {
+          session.user.email = token.email;
+        }
       }
       return session;
     },

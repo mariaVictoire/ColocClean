@@ -2,16 +2,30 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export async function requireOwner() {
-  const session = await auth();
-  if (!session?.user) {
+  let session = null;
+  try {
+    session = await auth();
+  } catch (error) {
+    console.error("[requireOwner] auth() failed", error);
     redirect("/admin/connexion");
   }
-  if (session.user.role !== "OWNER" && session.user.role !== "ADMIN") {
+
+  if (!session?.user?.email) {
     redirect("/admin/connexion");
   }
+
+  const role = session.user.role;
+  if (role !== "OWNER" && role !== "ADMIN") {
+    redirect("/admin/connexion");
+  }
+
   return session;
 }
 
 export async function getOptionalSession() {
-  return auth();
+  try {
+    return await auth();
+  } catch {
+    return null;
+  }
 }

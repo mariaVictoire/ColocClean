@@ -1,7 +1,7 @@
 import { requireOwner } from "@/lib/auth-helpers";
-import { signOut } from "@/lib/auth";
 import { appConfig } from "@/config/app";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { signOutAction } from "@/lib/actions/auth";
 
 export default async function AdminProtectedLayout({
   children,
@@ -23,12 +23,7 @@ export default async function AdminProtectedLayout({
                 {session.user.email}
               </p>
             </div>
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: "/admin/connexion" });
-              }}
-            >
+            <form action={signOutAction}>
               <button
                 type="submit"
                 className="touch-target inline-flex items-center justify-center rounded-xl border border-stone-300 px-3 text-sm font-medium text-stone-700 hover:bg-stone-50 active:bg-stone-100"

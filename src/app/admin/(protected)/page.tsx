@@ -3,7 +3,6 @@ import { fr } from "date-fns/locale";
 import { AssignmentStatus } from "@prisma/client";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
-import { getDefaultProperty } from "@/lib/property";
 import { weekBoundsFor } from "@/lib/scheduling/schedule";
 import { StatusBadge } from "@/components/StatusBadge";
 import { appConfig } from "@/config/app";
@@ -17,26 +16,41 @@ export const metadata = {
 
 export default async function AdminDashboardPage() {
   await requireOwner();
-  const property = await getDefaultProperty();
   const { weekStart, weekEnd } = weekBoundsFor(new Date());
 
-  const schedule = await prisma.weeklySchedule.findUnique({
-    where: {
-      propertyId_weekStart: {
-        propertyId: property.id,
-        weekStart,
-      },
-    },
-    include: {
-      assignments: {
-        include: {
-          room: true,
-          task: true,
+  let property = null;
+  let schedule = null;
+  let loadError: string | null = null;
+
+  try {
+    property = await prisma.property.findFirst({
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (property) {
+      schedule = await prisma.weeklySchedule.findUnique({
+        where: {
+          propertyId_weekStart: {
+            propertyId: property.id,
+            weekStart,
+          },
         },
-        orderBy: { room: { number: "asc" } },
-      },
-    },
-  });
+        include: {
+          assignments: {
+            include: {
+              room: true,
+              task: true,
+            },
+            orderBy: { room: { number: "asc" } },
+          },
+        },
+      });
+    }
+  } catch (error) {
+    console.error("[admin/dashboard]", error);
+    loadError =
+      "Impossible de charger les données. Vérifie DATABASE_URL sur Vercel.";
+  }
 
   const counts = {
     total: schedule?.assignments.length ?? 0,
@@ -59,14 +73,26 @@ export default async function AdminDashboardPage() {
     <main className="flex flex-col gap-6">
       <div>
         <h1 className="text-xl font-semibold text-stone-900 sm:text-2xl">
-          {property.name}
+          {property?.name ?? "Tableau de bord"}
         </h1>
         <p className="mt-1 text-sm text-stone-600">
-          Semaine du{" "}
-          {format(weekStart, "d MMMM", { locale: fr })} au{" "}
+          Semaine du {format(weekStart, "d MMMM", { locale: fr })} au{" "}
           {format(weekEnd, "d MMMM yyyy", { locale: fr })}
         </p>
       </div>
+
+      {loadError && (
+        <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {loadError}
+        </p>
+      )}
+
+      {!loadError && !property && (
+        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          Aucune propriété en base. Lance le seed sur Supabase (
+          <code className="text-xs">npm run db:seed</code>).
+        </p>
+      )}
 
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
         {[
