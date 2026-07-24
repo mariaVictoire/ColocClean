@@ -30,6 +30,24 @@ describe("generateBalancedRotation", () => {
     }
   });
 
+  it("peut produire des rotations différentes entre deux tirages", () => {
+    const previous = rooms.map((r, i) => ({
+      roomId: r.id,
+      taskId: tasks[i].id,
+    }));
+    const signatures = new Set<string>();
+    for (let i = 0; i < 30; i++) {
+      const result = generateBalancedRotation(rooms, tasks, previous);
+      signatures.add(
+        result
+          .map((r) => `${r.roomId}:${r.taskId}`)
+          .sort()
+          .join("|"),
+      );
+    }
+    expect(signatures.size).toBeGreaterThan(1);
+  });
+
   it("refuse un nombre de chambres ≠ tâches", () => {
     expect(() =>
       generateBalancedRotation(rooms, tasks.slice(0, 5), []),

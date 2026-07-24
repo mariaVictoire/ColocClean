@@ -45,11 +45,18 @@ export async function generateScheduleForProperty(
     where: {
       propertyId_weekStart: { propertyId, weekStart },
     },
+    include: { assignments: true },
   });
 
   if (existing && !options?.force) {
     return { schedule: existing, created: false as const };
   }
+
+  // En régénération : éviter de recoller le même planning qu'on remplace
+  const replacedAssignments = (existing?.assignments ?? []).map((a) => ({
+    roomId: a.roomId,
+    taskId: a.taskId,
+  }));
 
   if (existing && options?.force) {
     await prisma.weeklySchedule.delete({ where: { id: existing.id } });
@@ -74,10 +81,18 @@ export async function generateScheduleForProperty(
     include: { assignments: true },
   });
 
-  const previous = (previousSchedule?.assignments ?? []).map((a) => ({
-    roomId: a.roomId,
-    taskId: a.taskId,
-  }));
+  const previousFromLastWeek = (previousSchedule?.assignments ?? []).map(
+    (a) => ({
+      roomId: a.roomId,
+      taskId: a.taskId,
+    }),
+  );
+
+  // Priorité : ne pas répéter le planning qu'on régénère, sinon la semaine d'avant
+  const previous =
+    replacedAssignments.length > 0
+      ? replacedAssignments
+      : previousFromLastWeek;
 
   const rotation = generateBalancedRotation(
     rooms.map((r) => ({ id: r.id, number: r.number })),

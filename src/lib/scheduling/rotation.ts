@@ -23,11 +23,36 @@ function permute<T>(items: T[]): T[][] {
   return results;
 }
 
+function scorePermutation(
+  sortedRooms: RoomRef[],
+  perm: TaskRef[],
+  prevByRoom: Map<string, string>,
+  mean: number,
+): { result: RotationResult; score: number; hasRepeat: boolean } {
+  let score = 0;
+  let hasRepeat = false;
+  const result: RotationResult = [];
+
+  for (let i = 0; i < sortedRooms.length; i++) {
+    const room = sortedRooms[i];
+    const task = perm[i];
+    result.push({ roomId: room.id, taskId: task.id });
+
+    if (prevByRoom.get(room.id) === task.id) {
+      score += 10_000;
+      hasRepeat = true;
+    }
+    score += Math.abs((task.difficulty ?? 3) - mean);
+  }
+
+  return { result, score, hasRepeat };
+}
+
 /**
- * Rotation équilibrée :
+ * Rotation équilibrée + tirage aléatoire parmi les bonnes solutions :
  * - 1 tâche / chambre, 1 chambre / tâche
  * - évite la même tâche deux semaines de suite si possible
- * - équilibre la difficulté (somme des écarts au moyen)
+ * - à chaque génération / régénération, le mapping change (random)
  */
 export function generateBalancedRotation(
   rooms: RoomRef[],
@@ -49,44 +74,23 @@ export function generateBalancedRotation(
   const mean =
     difficulties.reduce((sum, d) => sum + d, 0) / difficulties.length;
 
-  const taskPerms = permute(tasks);
-  let best: RotationResult | null = null;
-  let bestScore = Number.POSITIVE_INFINITY;
+  const scored = permute(tasks).map((perm) =>
+    scorePermutation(sortedRooms, perm, prevByRoom, mean),
+  );
 
-  for (const perm of taskPerms) {
-    let score = 0;
-    const result: RotationResult = [];
+  const withoutRepeat = scored.filter((s) => !s.hasRepeat);
+  const pool = withoutRepeat.length > 0 ? withoutRepeat : scored;
 
-    for (let i = 0; i < sortedRooms.length; i++) {
-      const room = sortedRooms[i];
-      const task = perm[i];
-      result.push({ roomId: room.id, taskId: task.id });
+  const bestScore = Math.min(...pool.map((s) => s.score));
+  // Garde les solutions proches du meilleur score pour rester équilibré,
+  // tout en permettant plusieurs variantes.
+  const margin = Math.max(1, mean * 0.5);
+  const top = pool.filter((s) => s.score <= bestScore + margin);
+  const candidates = top.length > 0 ? top : pool;
 
-      if (prevByRoom.get(room.id) === task.id) {
-        score += 10_000;
-      }
-      score += Math.abs((task.difficulty ?? 3) - mean);
-    }
-
-    // Léger biais : chambres à numéro bas → tâches un peu plus difficiles
-    // pour éviter toujours le même pattern numérique.
-    for (let i = 0; i < result.length; i++) {
-      score += i * 0.01 * ((perm[i].difficulty ?? 3) % 2);
-    }
-
-    if (score < bestScore) {
-      bestScore = score;
-      best = result;
-      if (score < 10_000) {
-        // Déjà une solution sans répétition : on peut s'arrêter tôt
-        // seulement si score quasi optimal
-        if (score < mean) break;
-      }
-    }
-  }
-
-  if (!best) {
+  const pick = candidates[Math.floor(Math.random() * candidates.length)];
+  if (!pick) {
     throw new Error("Impossible de générer une rotation.");
   }
-  return best;
+  return pick.result;
 }
