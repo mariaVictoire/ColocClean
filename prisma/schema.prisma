@@ -1,0 +1,203 @@
+// ColocClean — schéma de données
+// Renommage de l'app : voir src/config/app.ts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon / Vercel : URL directe (sans pooler) pour les migrations
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+}
+
+enum AssignmentStatus {
+  UPCOMING
+  PENDING
+  COMPLETED
+  LATE
+  EXCUSED
+  CANCELLED
+}
+
+enum WeeklyScheduleStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+}
+
+enum ReminderType {
+  FRIDAY
+  FRIENDLY
+  LATE
+  CUSTOM
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  role         UserRole  @default(OWNER)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  auditLogs    AuditLog[]
+}
+
+model Property {
+  id                    String           @id @default(cuid())
+  name                  String
+  timezone              String           @default("Europe/Paris")
+  language              String           @default("fr")
+  roomCount             Int              @default(6)
+  generationDay         Int              @default(1) // 1 = lundi (ISO)
+  reminderDay           Int              @default(5) // 5 = vendredi
+  deadlineDay           Int              @default(0) // 0 = dimanche
+  deadlineTime          String           @default("18:00")
+  photoRequired         Boolean          @default(false)
+  primaryColor          String           @default("#0F766E")
+  logoUrl               String?
+  whatsappFridayMessage String           @db.Text
+  whatsappFriendlyMessage String         @db.Text
+  whatsappLateMessage   String           @db.Text
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  rooms                 Room[]
+  tasks                 Task[]
+  weeklySchedules       WeeklySchedule[]
+}
+
+model Room {
+  id            String       @id @default(cuid())
+  propertyId    String
+  property      Property     @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  number        Int
+  label         String
+  whatsappNumber String?
+  isActive      Boolean      @default(true)
+  qrToken       String       @unique
+  qrTokenActive Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  assignments   Assignment[]
+
+  @@unique([propertyId, number])
+  @@index([qrToken])
+}
+
+model Task {
+  id          String          @id @default(cuid())
+  propertyId  String
+  property    Property        @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  difficulty  Int?            // 1–5
+  isActive    Boolean         @default(true)
+  position    Int             @default(0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  checklistItems ChecklistItem[]
+  assignments Assignment[]
+
+  @@index([propertyId, isActive])
+}
+
+model ChecklistItem {
+  id          String                @id @default(cuid())
+  taskId      String
+  task        Task                  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label       String
+  position    Int                   @default(0)
+  isRequired  Boolean               @default(true)
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  assignmentChecks AssignmentChecklist[]
+
+  @@index([taskId, position])
+}
+
+model WeeklySchedule {
+  id                     String              @id @default(cuid())
+  propertyId             String
+  property               Property            @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  weekStart              DateTime            @db.Date
+  weekEnd                DateTime            @db.Date
+  deadline               DateTime
+  status                 WeeklyScheduleStatus @default(ACTIVE)
+  generatedAutomatically Boolean             @default(true)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  assignments            Assignment[]
+
+  @@unique([propertyId, weekStart])
+  @@index([propertyId, status])
+}
+
+model Assignment {
+  id               String                @id @default(cuid())
+  weeklyScheduleId String
+  weeklySchedule   WeeklySchedule        @relation(fields: [weeklyScheduleId], references: [id], onDelete: Cascade)
+  roomId           String
+  room             Room                  @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  taskId           String
+  task             Task                  @relation(fields: [taskId], references: [id], onDelete: Restrict)
+  status           AssignmentStatus      @default(PENDING)
+  completedAt      DateTime?
+  comment          String?
+  photoUrl         String?
+  clientIp         String?
+  userAgent        String?
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  checklist        AssignmentChecklist[]
+  reminders        ReminderLog[]
+
+  @@unique([weeklyScheduleId, roomId])
+  @@unique([weeklyScheduleId, taskId])
+  @@index([status])
+  @@index([roomId])
+}
+
+model AssignmentChecklist {
+  id              String         @id @default(cuid())
+  assignmentId    String
+  assignment      Assignment     @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  checklistItemId String
+  checklistItem   ChecklistItem  @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+  isChecked       Boolean        @default(false)
+  checkedAt       DateTime?
+
+  @@unique([assignmentId, checklistItemId])
+}
+
+model ReminderLog {
+  id            String       @id @default(cuid())
+  assignmentId  String
+  assignment    Assignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  type          ReminderType
+  preparedAt    DateTime?
+  markedAsSentAt DateTime?
+  createdAt     DateTime     @default(now())
+
+  @@index([assignmentId, type])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([createdAt])
+}
