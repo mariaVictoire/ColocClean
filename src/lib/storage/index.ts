@@ -45,7 +45,7 @@ export function getStorageProvider(): StorageProvider {
   return value;
 }
 
-/** Stub local — implémentation complète en Phase 4. */
+/** Adapters locaux / cloud selon STORAGE_PROVIDER. */
 export async function getStorageAdapter(): Promise<StorageAdapter> {
   const provider = getStorageProvider();
 

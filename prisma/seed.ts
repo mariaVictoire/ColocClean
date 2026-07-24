@@ -20,19 +20,21 @@ function createQrToken(): string {
 const DEFAULT_WHATSAPP = {
   friday: `Bonjour,
 
-Locataire de la Chambre {numero_chambre}, ce week-end vous êtes chargé du nettoyage de : {nom_tache}.
+Locataire de la Chambre {numero_chambre}, rappel : ce week-end vous êtes chargé du nettoyage de : {nom_tache}.
 
 Merci d'effectuer cette tâche avant le {date_limite} et de la valider en scannant le QR code présent dans votre chambre.
 
 Merci.`,
   friendly: `Bonjour,
 
-Petit rappel : la Chambre {numero_chambre} est responsable du nettoyage de {nom_tache} ce week-end.
+Locataire de la Chambre {numero_chambre}, rappel : ce week-end vous êtes chargé du nettoyage de : {nom_tache}.
 
-Merci de penser à effectuer la tâche et à la valider via le QR code présent dans votre chambre.`,
+Merci d'effectuer cette tâche avant le {date_limite} et de la valider en scannant le QR code présent dans votre chambre.
+
+Merci.`,
   late: `Bonjour,
 
-Le nettoyage de {nom_tache}, attribué à la Chambre {numero_chambre}, n'a pas encore été validé.
+Signalement retard : le nettoyage de {nom_tache}, attribué à la Chambre {numero_chambre}, n'a pas encore été validé.
 
 Merci de régulariser la situation et de confirmer la tâche via le QR code présent dans votre chambre.`,
 };

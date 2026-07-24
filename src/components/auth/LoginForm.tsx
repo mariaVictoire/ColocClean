@@ -108,14 +108,14 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={isSubmitting}
-        className="touch-target mt-1 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 px-4 text-base font-semibold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-60"
+        className="touch-target mt-1 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 px-4 text-base font-semibold text-white transition hover:bg-teal-800 active:bg-teal-900 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isSubmitting ? "Connexion…" : "Se connecter"}
       </button>
 
-      <p className="break-all text-center text-sm text-stone-500">
-        Compte démo :{" "}
-        <span className="font-medium text-stone-700">
+      <p className="text-center text-sm leading-snug text-stone-500">
+        Compte démo
+        <span className="mt-0.5 block break-all font-medium text-stone-700">
           owner@coloclean.demo
         </span>
       </p>

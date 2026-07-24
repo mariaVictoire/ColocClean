@@ -40,15 +40,19 @@ prisma/
 - Une base **PostgreSQL** (recommandé pour Vercel : [Neon](https://neon.tech) — pas besoin de Docker)
 - npm
 
-## Installation (dev local avec Neon — sans Docker)
+## Installation (dev avec Supabase — sans Docker)
 
 ```bash
-# 1. Créer un projet gratuit sur https://console.neon.tech
-# 2. Copier les 2 URLs : pooled → DATABASE_URL, directe → DIRECT_URL
+# 1. Créer un projet gratuit sur https://supabase.com/dashboard
+# 2. Project Settings → Database → Connection string :
+#    - Transaction (port 6543) → DATABASE_URL (+ ?pgbouncer=true)
+#    - Direct (port 5432)      → DIRECT_URL
+# 3. Mot de passe DB = celui choisi à la création du projet
 
 npm install
 cp .env.example .env
 # Renseigner DATABASE_URL, DIRECT_URL, AUTH_SECRET
+# AUTH_URL=http://localhost:3000 (ou le port affiché par next dev)
 
 npx prisma migrate deploy
 npm run db:seed
@@ -57,7 +61,7 @@ npm run dev
 
 Ouvrir [http://localhost:3000](http://localhost:3000).
 
-Docker (`docker compose up -d`) reste optionnel si vous préférez Postgres en local.
+Alternatives : [Neon](https://neon.tech) (mêmes variables) ou Docker (`docker compose up -d`) pour Postgres local.
 
 ## Identifiants de démonstration
 
@@ -87,22 +91,30 @@ Après le seed, les tokens QR des 6 chambres sont affichés dans la console.
 | Phase | Contenu |
 | ----- | ------- |
 | **1** | Init, Prisma, seed, auth ✅ |
-| **2** | Dashboard, chambres, tâches, checklists |
-| **3** | Algorithme de rotation + planning |
-| **4** | QR codes + pages publiques + validation |
-| **5** | WhatsApp + historique |
-| **6** | Sécurité, tests, déploiement |
+| **2** | Dashboard, chambres, tâches, checklists ✅ |
+| **3** | Algorithme de rotation + planning + crons ✅ |
+| **4** | QR codes + pages publiques + validation ✅ |
+| **5** | WhatsApp + historique ✅ |
+| **6** | Sécurité, tests, déploiement ✅ |
+
+### Parcours utiles
+
+- Admin : `/admin` (après connexion)
+- QR locataire : `/app/chambre/chambre-N/<token>` (tokens affichés au seed)
+- Cron (header `Authorization: Bearer $CRON_SECRET`) :
+  - `GET /api/cron/generate-schedule`
+  - `GET /api/cron/mark-late`
 
 ## Déploiement Vercel
 
-Cible prévue : **Vercel + Neon** (PostgreSQL managé). Docker n’est pas nécessaire.
+Cible prévue : **Vercel + Supabase** (ou Neon). Docker n’est pas nécessaire.
 
-### 1. Base Neon
+### 1. Base Supabase (ou Neon)
 
-1. Créer un projet sur [neon.tech](https://neon.tech)
-2. Dans *Connection details* :
-   - **Pooled connection** → `DATABASE_URL`
-   - **Direct connection** → `DIRECT_URL` (requis pour `prisma migrate deploy`)
+1. Créer un projet sur [supabase.com](https://supabase.com/dashboard) (ou [neon.tech](https://neon.tech))
+2. Dans *Project Settings → Database → Connection string* :
+   - **Transaction pooler** (port `6543`) → `DATABASE_URL` (ajouter `?pgbouncer=true`)
+   - **Direct connection** (port `5432`) → `DIRECT_URL` (requis pour `prisma migrate deploy`)
 
 ### 2. Projet Vercel
 
@@ -117,14 +129,16 @@ Ou : importer le repo GitHub dans le dashboard Vercel.
 
 | Variable | Exemple |
 | -------- | ------- |
-| `DATABASE_URL` | URL Neon *pooled* |
-| `DIRECT_URL` | URL Neon *directe* |
+| `DATABASE_URL` | URL Supabase *Transaction* (`:6543` + `?pgbouncer=true`) |
+| `DIRECT_URL` | URL Supabase *Direct* (`db.…supabase.co:5432`) |
 | `AUTH_SECRET` | `openssl rand -base64 32` |
 | `AUTH_URL` | `https://votre-app.vercel.app` |
 | `CRON_SECRET` | secret aléatoire (crons Vercel) |
-| `STORAGE_PROVIDER` | `cloudinary` ou `vercel-blob` (pas `local` en prod) |
+| `STORAGE_PROVIDER` | `local` en MVP (photos optionnelles) ; `vercel-blob` recommandé ensuite |
 
 Le script `build` exécute `prisma migrate deploy` puis `next build`.
+
+Après le premier déploiement, mets à jour `AUTH_URL` avec l’URL Vercel réelle, puis redeploy.
 
 ### 4. Photos en production
 
@@ -138,7 +152,7 @@ Définis dans `vercel.json` :
 - lundi 07:00 UTC → `/api/cron/generate-schedule`
 - dimanche 18:05 UTC → `/api/cron/mark-late`
 
-Les routes seront implémentées en Phase 3.
+Les routes sont protégées par `CRON_SECRET`.
 
 ## Sécurité (MVP)
 

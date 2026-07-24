@@ -36,13 +36,15 @@ body {
   overflow-x: hidden;
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
+  /* Améliore le scroll tactile iOS */
+  -webkit-overflow-scrolling: touch;
 }
 
 .font-display {
   font-family: var(--font-fraunces), ui-serif, Georgia, serif;
 }
 
-/* Zones tactiles confortables sur mobile */
+/* Zones tactiles confortables sur mobile (≥ 44px) */
 .touch-target {
   min-height: 2.75rem;
   min-width: 2.75rem;
@@ -51,6 +53,13 @@ body {
 /* Évite le zoom iOS sur focus des champs (< 16px) */
 input,
 select,
-textarea {
+textarea,
+button {
   font-size: 1rem;
+}
+
+/* Tap highlight discret */
+a,
+button {
+  -webkit-tap-highlight-color: rgb(15 118 110 / 0.12);
 }
