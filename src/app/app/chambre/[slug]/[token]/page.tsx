@@ -153,10 +153,6 @@ export default async function PublicRoomPage({ params }: PageProps) {
             items={assignment.task.checklistItems.map((item) => ({
               id: item.id,
               label: item.label,
-              isRequired: item.isRequired,
-              isChecked:
-                assignment.checklist.find((c) => c.checklistItemId === item.id)
-                  ?.isChecked ?? false,
             }))}
           />
         </>

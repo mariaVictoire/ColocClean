@@ -6,8 +6,6 @@ import { useState, useTransition } from "react";
 type Item = {
   id: string;
   label: string;
-  isRequired: boolean;
-  isChecked: boolean;
 };
 
 export function ValidateForm({
@@ -24,26 +22,15 @@ export function ValidateForm({
   items: Item[];
 }) {
   const router = useRouter();
-  const [checked, setChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(items.map((i) => [i.id, i.isChecked])),
-  );
   const [comment, setComment] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const allRequiredOk = items
-    .filter((i) => i.isRequired)
-    .every((i) => checked[i.id]);
-
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    if (!allRequiredOk) {
-      setError("Cochez tous les points de la liste avant de valider.");
-      return;
-    }
     if (photoRequired && !photo) {
       setError("Une photo est obligatoire.");
       return;
@@ -55,14 +42,6 @@ export function ValidateForm({
       body.set("token", token);
       body.set("slug", slug);
       body.set("comment", comment);
-      body.set(
-        "checkedIds",
-        JSON.stringify(
-          Object.entries(checked)
-            .filter(([, v]) => v)
-            .map(([id]) => id),
-        ),
-      );
       if (photo) body.set("photo", photo);
 
       const res = await fetch("/api/public/validate", {
@@ -83,43 +62,27 @@ export function ValidateForm({
 
   return (
     <form onSubmit={onSubmit} className="mt-5 flex flex-col gap-4">
-      <fieldset className="rounded-2xl border border-stone-200 bg-white/90 p-4">
-        <legend className="px-1 text-sm font-semibold text-stone-900">
-          Ce qu’il faut faire
-        </legend>
-        <p className="mb-3 text-sm text-stone-600">
-          Cochez chaque point au fur et à mesure. Tout doit être fait avant de
-          valider.
+      <section className="rounded-2xl border border-stone-200 bg-white/90 p-4">
+        <h2 className="text-sm font-semibold text-stone-900">
+          Rappel — ce qu’il faut faire
+        </h2>
+        <p className="mt-1 text-sm text-stone-600">
+          Liste indicative pour vous guider. Pas besoin de cocher chaque point.
         </p>
-        <ul className="space-y-3">
+        <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-stone-800">
           {items.map((item) => (
-            <li key={item.id}>
-              <label className="flex cursor-pointer items-start gap-3 text-sm text-stone-800">
-                <input
-                  type="checkbox"
-                  checked={!!checked[item.id]}
-                  onChange={(e) =>
-                    setChecked((prev) => ({
-                      ...prev,
-                      [item.id]: e.target.checked,
-                    }))
-                  }
-                  className="mt-1 h-5 w-5 rounded border-stone-300 text-teal-700 focus:ring-teal-700"
-                />
-                <span>{item.label}</span>
-              </label>
-            </li>
+            <li key={item.id}>{item.label}</li>
           ))}
-        </ul>
-      </fieldset>
+        </ol>
+      </section>
 
       <section className="rounded-2xl border border-teal-200 bg-teal-50/70 p-4">
         <h2 className="font-semibold text-teal-950">
           Vous avez fait votre tâche ?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-teal-900/90">
-          Si vous avez tout nettoyé selon la liste ci-dessus, merci de valider
-          ci-dessous. Cela informe le propriétaire que le ménage est terminé.
+          Si vous avez tout nettoyé, merci de valider ci-dessous. Cela informe le
+          propriétaire que le ménage est terminé.
         </p>
 
         <label className="mt-4 block text-sm font-medium text-stone-700">
@@ -155,7 +118,7 @@ export function ValidateForm({
 
         <button
           type="submit"
-          disabled={pending || !allRequiredOk}
+          disabled={pending}
           className="touch-target mt-4 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 text-base font-semibold text-white disabled:opacity-60"
         >
           {pending ? "Validation…" : "Oui, j’ai tout nettoyé — valider"}

@@ -6,6 +6,8 @@ export type MessageContext = {
   numero_chambre: number | string;
   nom_tache: string;
   date_limite: Date | string;
+  /** Lien court pour valider (ex. https://…/q/token) */
+  lien_validation?: string;
 };
 
 export function formatDeadline(date: Date | string): string {
@@ -25,7 +27,8 @@ export function fillWhatsAppTemplate(
       typeof ctx.date_limite === "string"
         ? ctx.date_limite
         : formatDeadline(ctx.date_limite),
-    );
+    )
+    .replaceAll("{lien_validation}", ctx.lien_validation ?? "");
 }
 
 /** Normalise un numéro FR/international vers digits pour wa.me */
@@ -64,4 +67,9 @@ export function templateForType(
     default:
       return property.whatsappFridayMessage;
   }
+}
+
+/** Chemin court de validation : /q/<token> */
+export function shortValidationPath(qrToken: string): string {
+  return `/q/${qrToken}`;
 }

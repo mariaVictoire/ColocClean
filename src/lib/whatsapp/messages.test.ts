@@ -8,14 +8,15 @@ import {
 describe("whatsapp messages", () => {
   it("remplit les placeholders", () => {
     const text = fillWhatsAppTemplate(
-      "Chambre {numero_chambre} : {nom_tache}",
+      "Chambre {numero_chambre} : {nom_tache} → {lien_validation}",
       {
         numero_chambre: 3,
         nom_tache: "Cuisine",
         date_limite: "dimanche",
+        lien_validation: "https://exemple.test/q/abc",
       },
     );
-    expect(text).toBe("Chambre 3 : Cuisine");
+    expect(text).toBe("Chambre 3 : Cuisine → https://exemple.test/q/abc");
   });
 
   it("normalise un numéro FR", () => {

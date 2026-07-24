@@ -22,21 +22,27 @@ const DEFAULT_WHATSAPP = {
 
 Locataire de la Chambre {numero_chambre}, rappel : ce week-end vous êtes chargé du nettoyage de : {nom_tache}.
 
-Merci d'effectuer cette tâche avant le {date_limite} et de la valider en scannant le QR code présent dans votre chambre.
+Merci d'effectuer cette tâche avant le {date_limite}, puis de la valider :
+- en scannant le QR code de votre chambre, ou
+- via ce lien si vous ne pouvez pas scanner : {lien_validation}
 
 Merci.`,
   friendly: `Bonjour,
 
 Locataire de la Chambre {numero_chambre}, rappel : ce week-end vous êtes chargé du nettoyage de : {nom_tache}.
 
-Merci d'effectuer cette tâche avant le {date_limite} et de la valider en scannant le QR code présent dans votre chambre.
+Merci d'effectuer cette tâche avant le {date_limite}, puis de la valider :
+- en scannant le QR code de votre chambre, ou
+- via ce lien si vous ne pouvez pas scanner : {lien_validation}
 
 Merci.`,
   late: `Bonjour,
 
 Signalement retard : le nettoyage de {nom_tache}, attribué à la Chambre {numero_chambre}, n'a pas encore été validé.
 
-Merci de régulariser la situation et de confirmer la tâche via le QR code présent dans votre chambre.`,
+Merci de régulariser et de valider la tâche :
+- via le QR code de votre chambre, ou
+- via ce lien : {lien_validation}`,
 };
 
 const TASKS: Array<{

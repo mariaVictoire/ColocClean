@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
 import { getDefaultProperty } from "@/lib/property";
-import { roomSlug } from "@/lib/security/tokens";
+import { shortValidationPath } from "@/lib/whatsapp/messages";
 import { appConfig } from "@/config/app";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +31,7 @@ export default async function QrPage() {
 
   const cards = await Promise.all(
     rooms.map(async (room) => {
-      const path = `${appConfig.publicRoomPathPrefix}/${roomSlug(room.number)}/${room.qrToken}`;
+      const path = shortValidationPath(room.qrToken);
       const url = `${baseUrl}${path}`;
       const dataUrl = await QRCode.toDataURL(url, {
         margin: 1,

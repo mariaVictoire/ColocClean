@@ -13,20 +13,11 @@ export async function POST(request: Request) {
     const token = String(form.get("token") ?? "");
     const slug = String(form.get("slug") ?? "");
     const comment = String(form.get("comment") ?? "").slice(0, 1000);
-    const checkedRaw = String(form.get("checkedIds") ?? "[]");
     const photo = form.get("photo");
 
     const number = parseRoomSlug(slug);
     if (!assignmentId || !number || !/^[a-f0-9]{64}$/i.test(token)) {
       return NextResponse.json({ error: "Requête invalide." }, { status: 400 });
-    }
-
-    let checkedIds: string[] = [];
-    try {
-      checkedIds = JSON.parse(checkedRaw) as string[];
-      if (!Array.isArray(checkedIds)) throw new Error("bad");
-    } catch {
-      return NextResponse.json({ error: "Checklist invalide." }, { status: 400 });
     }
 
     const assignment = await prisma.assignment.findUnique({
@@ -35,7 +26,6 @@ export async function POST(request: Request) {
         room: true,
         task: { include: { checklistItems: true } },
         weeklySchedule: true,
-        checklist: true,
       },
     });
 
@@ -50,15 +40,6 @@ export async function POST(request: Request) {
 
     if (assignment.status === AssignmentStatus.COMPLETED) {
       return NextResponse.json({ error: "Déjà validé." }, { status: 409 });
-    }
-
-    const required = assignment.task.checklistItems.filter((i) => i.isRequired);
-    const checkedSet = new Set(checkedIds);
-    if (!required.every((i) => checkedSet.has(i.id))) {
-      return NextResponse.json(
-        { error: "Cochez tous les points obligatoires." },
-        { status: 400 },
-      );
     }
 
     let photoUrl: string | null = null;
@@ -88,13 +69,14 @@ export async function POST(request: Request) {
       request.headers.get("x-real-ip") ??
       null;
     const userAgent = request.headers.get("user-agent")?.slice(0, 500) ?? null;
+    const now = new Date();
 
     await prisma.$transaction(async (tx) => {
       await tx.assignment.update({
         where: { id: assignment.id },
         data: {
           status: AssignmentStatus.COMPLETED,
-          completedAt: new Date(),
+          completedAt: now,
           comment: comment || null,
           photoUrl,
           clientIp: ip,
@@ -102,8 +84,8 @@ export async function POST(request: Request) {
         },
       });
 
+      // Marque la checklist comme faite (rappel uniquement côté UI)
       for (const item of assignment.task.checklistItems) {
-        const isChecked = checkedSet.has(item.id);
         await tx.assignmentChecklist.upsert({
           where: {
             assignmentId_checklistItemId: {
@@ -114,12 +96,12 @@ export async function POST(request: Request) {
           create: {
             assignmentId: assignment.id,
             checklistItemId: item.id,
-            isChecked,
-            checkedAt: isChecked ? new Date() : null,
+            isChecked: true,
+            checkedAt: now,
           },
           update: {
-            isChecked,
-            checkedAt: isChecked ? new Date() : null,
+            isChecked: true,
+            checkedAt: now,
           },
         });
       }

@@ -5,6 +5,7 @@ import { getDefaultProperty } from "@/lib/property";
 import { weekBoundsFor } from "@/lib/scheduling/schedule";
 import {
   fillWhatsAppTemplate,
+  shortValidationPath,
   templateForType,
   whatsappDeepLink,
 } from "@/lib/whatsapp/messages";
@@ -12,12 +13,21 @@ import { REMINDER_TYPE_LABELS, WHATSAPP_REMINDER_OPTIONS } from "@/lib/constants
 import { StatusBadge } from "@/components/StatusBadge";
 import { appConfig } from "@/config/app";
 import { WhatsAppRowActions } from "./WhatsAppRowActions";
+import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: `WhatsApp — ${appConfig.name}`,
 };
+
+async function getBaseUrl() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  if (host) return `${proto}://${host}`;
+  return process.env.AUTH_URL ?? "http://localhost:3000";
+}
 
 export default async function WhatsAppPage({
   searchParams,
@@ -29,6 +39,7 @@ export default async function WhatsAppPage({
   const type: ReminderType =
     typeParam === "LATE" ? "LATE" : "FRIDAY";
 
+  const baseUrl = await getBaseUrl();
   const property = await getDefaultProperty();
   const { weekStart } = weekBoundsFor(new Date());
   const schedule = await prisma.weeklySchedule.findUnique({
@@ -96,10 +107,12 @@ export default async function WhatsAppPage({
       ) : (
         <ul className="flex flex-col gap-3">
           {schedule.assignments.map((a) => {
+            const lien = `${baseUrl}${shortValidationPath(a.room.qrToken)}`;
             const message = fillWhatsAppTemplate(template, {
               numero_chambre: a.room.number,
               nom_tache: a.task.name,
               date_limite: schedule.deadline,
+              lien_validation: lien,
             });
             const deepLink = a.room.whatsappNumber
               ? whatsappDeepLink(a.room.whatsappNumber, message)
