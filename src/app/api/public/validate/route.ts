@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { AssignmentStatus } from "@prisma/client";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
 import { prisma } from "@/lib/db";
 import { parseRoomSlug } from "@/lib/security/tokens";
-import { assertValidPhoto, getStorageAdapter } from "@/lib/storage";
+import { whatsappDeepLink } from "@/lib/whatsapp/messages";
 
 export const runtime = "nodejs";
 
@@ -13,7 +15,6 @@ export async function POST(request: Request) {
     const token = String(form.get("token") ?? "");
     const slug = String(form.get("slug") ?? "");
     const comment = String(form.get("comment") ?? "").slice(0, 1000);
-    const photo = form.get("photo");
 
     const number = parseRoomSlug(slug);
     if (!assignmentId || !number || !/^[a-f0-9]{64}$/i.test(token)) {
@@ -42,27 +43,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Déjà validé." }, { status: 409 });
     }
 
-    let photoUrl: string | null = null;
     const property = await prisma.property.findUniqueOrThrow({
       where: { id: assignment.room.propertyId },
     });
-
-    if (photo instanceof File && photo.size > 0) {
-      const buffer = Buffer.from(await photo.arrayBuffer());
-      assertValidPhoto(photo.type || "image/jpeg", buffer.byteLength);
-      const storage = await getStorageAdapter();
-      const uploaded = await storage.upload(buffer, {
-        filename: photo.name || "photo.jpg",
-        mimeType: photo.type || "image/jpeg",
-        folder: "validations",
-      });
-      photoUrl = uploaded.url;
-    } else if (property.photoRequired) {
-      return NextResponse.json(
-        { error: "Une photo est obligatoire." },
-        { status: 400 },
-      );
-    }
 
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
@@ -78,13 +61,12 @@ export async function POST(request: Request) {
           status: AssignmentStatus.COMPLETED,
           completedAt: now,
           comment: comment || null,
-          photoUrl,
+          photoUrl: null,
           clientIp: ip,
           userAgent,
         },
       });
 
-      // Marque la checklist comme faite (rappel uniquement côté UI)
       for (const item of assignment.task.checklistItems) {
         await tx.assignmentChecklist.upsert({
           where: {
@@ -107,7 +89,24 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json({ ok: true });
+    const weekLabel = format(assignment.weeklySchedule.weekStart, "d MMMM", {
+      locale: fr,
+    });
+    let message = `✅ ${assignment.room.label} — ${assignment.task.name} terminé (semaine du ${weekLabel}).`;
+    if (comment.trim()) {
+      message += `\nCommentaire : ${comment.trim()}`;
+    }
+    message += "\n(Photo jointe si possible)";
+
+    const whatsappUrl = property.ownerWhatsappNumber
+      ? whatsappDeepLink(property.ownerWhatsappNumber, message)
+      : null;
+
+    return NextResponse.json({
+      ok: true,
+      whatsappUrl,
+      message,
+    });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Erreur serveur.";

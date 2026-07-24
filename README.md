@@ -134,27 +134,21 @@ Ou : importer le repo GitHub dans le dashboard Vercel.
 | `AUTH_SECRET` | `openssl rand -base64 32` |
 | `AUTH_URL` | `https://votre-app.vercel.app` |
 | `CRON_SECRET` | secret aléatoire (crons Vercel) |
-| `STORAGE_PROVIDER` | `vercel-blob` en prod ; `local` en dev uniquement |
-| `BLOB_READ_WRITE_TOKEN` | Auto si Blob Store lié au projet (sinon le coller depuis Storage) |
+| `STORAGE_PROVIDER` | Optionnel — photos envoyées via WhatsApp, pas stockées sur le serveur |
 
 Le script `build` exécute `prisma migrate deploy` puis `next build`.
 
 Après le premier déploiement, mets à jour `AUTH_URL` avec l’URL Vercel réelle, puis redeploy.
 
-### 4. Photos en production (Vercel Blob)
+### 4. Photos (WhatsApp du bailleur)
 
-Sur Vercel, le disque est **éphémère** : `STORAGE_PROVIDER=local` ne convient pas.
+Pas besoin de Blob / Supabase Storage pour le MVP.
 
-1. Dashboard Vercel → projet → **Storage** → **Create Database/Store** → **Blob** (accès **public**)
-2. Connecter le store au projet (Production + Preview) → Vercel injecte `BLOB_READ_WRITE_TOKEN`
-3. Ajouter / mettre à jour : `STORAGE_PROVIDER=vercel-blob`
-4. Redeploy
+1. Admin → **Chambres** → renseigner le **WhatsApp du bailleur**
+2. Le colocateur prend une photo à la validation
+3. Le téléphone ouvre le partage (ou WhatsApp) pour envoyer la photo + message au bailleur
 
-CLI (après `vercel login`) :
-
-```bash
-vercel blob create-store coloclean-photos --access public --yes --environment production --environment preview
-```
+Sur mobile, choisir **WhatsApp** dans le menu de partage pour joindre la photo. Un lien `wa.me` (texte seul) est le repli si le partage n’est pas disponible.
 
 ### 5. Crons (Phase 3)
 

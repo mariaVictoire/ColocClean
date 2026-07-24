@@ -8,6 +8,33 @@ type Item = {
   label: string;
 };
 
+async function sendProofToOwner(photo: File | null, whatsappUrl: string | null, text: string) {
+  if (photo && typeof navigator !== "undefined" && navigator.canShare) {
+    try {
+      const file =
+        photo.type && photo.name
+          ? photo
+          : new File([photo], "preuve-menage.jpg", {
+              type: photo.type || "image/jpeg",
+            });
+      if (navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          text,
+          title: "Preuve ménage",
+        });
+        return;
+      }
+    } catch {
+      // Annulé ou non supporté → fallback wa.me
+    }
+  }
+
+  if (whatsappUrl) {
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+  }
+}
+
 export function ValidateForm({
   assignmentId,
   token,
@@ -25,11 +52,13 @@ export function ValidateForm({
   const [comment, setComment] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setInfo(null);
 
     if (photoRequired && !photo) {
       setError("Une photo est obligatoire.");
@@ -42,7 +71,6 @@ export function ValidateForm({
       body.set("token", token);
       body.set("slug", slug);
       body.set("comment", comment);
-      if (photo) body.set("photo", photo);
 
       const res = await fetch("/api/public/validate", {
         method: "POST",
@@ -50,12 +78,27 @@ export function ValidateForm({
       });
       const data = (await res.json().catch(() => null)) as {
         error?: string;
+        whatsappUrl?: string | null;
+        message?: string;
       } | null;
 
       if (!res.ok) {
         setError(data?.error ?? "Validation impossible.");
         return;
       }
+
+      await sendProofToOwner(
+        photo,
+        data?.whatsappUrl ?? null,
+        data?.message ?? "Ménage terminé.",
+      );
+
+      if (!data?.whatsappUrl) {
+        setInfo(
+          "Validé. Ajoutez le WhatsApp du bailleur dans Admin → Chambres pour l’envoi photo.",
+        );
+      }
+
       router.refresh();
     });
   }
@@ -81,8 +124,8 @@ export function ValidateForm({
           Vous avez fait votre tâche ?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-teal-900/90">
-          Si vous avez tout nettoyé, merci de valider ci-dessous. Cela informe le
-          propriétaire que le ménage est terminé.
+          Validez puis envoyez la photo au propriétaire via WhatsApp (choisissez
+          WhatsApp dans le menu de partage).
         </p>
 
         <label className="mt-4 block text-sm font-medium text-stone-700">
@@ -97,10 +140,10 @@ export function ValidateForm({
         </label>
 
         <label className="mt-3 block text-sm font-medium text-stone-700">
-          Photo {photoRequired ? "(obligatoire)" : "(optionnelle)"}
+          Photo pour le bailleur {photoRequired ? "(obligatoire)" : "(recommandée)"}
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic"
+            accept="image/*"
             capture="environment"
             onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
             className="mt-1.5 block w-full text-sm text-stone-600 file:mr-3 file:rounded-lg file:border-0 file:bg-teal-100 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-teal-900"
@@ -115,13 +158,21 @@ export function ValidateForm({
             {error}
           </p>
         )}
+        {info && (
+          <p
+            role="status"
+            className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900"
+          >
+            {info}
+          </p>
+        )}
 
         <button
           type="submit"
           disabled={pending}
           className="touch-target mt-4 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 text-base font-semibold text-white disabled:opacity-60"
         >
-          {pending ? "Validation…" : "Oui, j’ai tout nettoyé — valider"}
+          {pending ? "Validation…" : "Valider et envoyer la photo"}
         </button>
       </section>
     </form>

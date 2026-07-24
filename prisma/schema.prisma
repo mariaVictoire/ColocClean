@@ -63,6 +63,8 @@ model Property {
   photoRequired         Boolean          @default(false)
   primaryColor          String           @default("#0F766E")
   logoUrl               String?
+  /** WhatsApp du bailleur — reçoit la photo / confirmation de validation */
+  ownerWhatsappNumber   String?
   whatsappFridayMessage String           @db.Text
   whatsappFriendlyMessage String         @db.Text
   whatsappLateMessage   String           @db.Text

@@ -4,6 +4,7 @@ import { getDefaultProperty } from "@/lib/property";
 import { roomSlug } from "@/lib/security/tokens";
 import { appConfig } from "@/config/app";
 import { RoomEditor } from "@/components/admin/RoomEditor";
+import { OwnerWhatsAppEditor } from "@/components/admin/OwnerWhatsAppEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,9 @@ export default async function ChambresPage() {
           Numéros WhatsApp et tokens QR permanents.
         </p>
       </div>
+
+      <OwnerWhatsAppEditor ownerWhatsappNumber={property.ownerWhatsappNumber} />
+
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {rooms.map((room) => {
           const slug = roomSlug(room.number);
