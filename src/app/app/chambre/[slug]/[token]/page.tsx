@@ -79,43 +79,71 @@ export default async function PublicRoomPage({ params }: PageProps) {
 
       {!assignment ? (
         <p className="mt-6 rounded-2xl border border-stone-200 bg-white/90 p-4 text-sm text-stone-600">
-          Aucune tâche assignée pour cette semaine.
+          Aucune tâche assignée pour cette semaine. Revenez plus tard ou
+          contactez le propriétaire.
         </p>
       ) : assignment.status === AssignmentStatus.COMPLETED ? (
         <div className="mt-6 rounded-2xl border border-green-200 bg-green-50 p-4">
-          <p className="font-semibold text-green-900">Tâche déjà validée</p>
+          <p className="font-semibold text-green-900">Merci, c’est validé</p>
+          <p className="mt-2 text-sm text-green-800">
+            Semaine du{" "}
+            {format(assignment.weeklySchedule.weekStart, "d MMMM", {
+              locale: fr,
+            })}{" "}
+            au{" "}
+            {format(assignment.weeklySchedule.weekEnd, "d MMMM yyyy", {
+              locale: fr,
+            })}
+          </p>
           <p className="mt-1 text-sm text-green-800">
-            {assignment.task.name}
+            Tâche : <strong>{assignment.task.name}</strong>
             {assignment.completedAt &&
-              ` · ${format(assignment.completedAt, "d MMM yyyy HH:mm", { locale: fr })}`}
+              ` · validée le ${format(assignment.completedAt, "d MMM yyyy HH:mm", { locale: fr })}`}
           </p>
         </div>
       ) : (
         <>
-          <div className="mt-5 rounded-2xl border border-stone-200 bg-white/90 p-4">
+          <section className="mt-5 rounded-2xl border border-teal-200 bg-white/95 p-4 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-teal-700">
-              Votre tâche
+              Semaine concernée
             </p>
-            <p className="mt-1 font-display text-xl font-semibold text-teal-950">
-              {assignment.task.name}
-            </p>
-            {assignment.task.description && (
-              <p className="mt-2 text-sm text-stone-600">
-                {assignment.task.description}
-              </p>
-            )}
-            <p className="mt-3 text-sm text-stone-500">
-              À faire avant le{" "}
-              {format(assignment.weeklySchedule.deadline, "EEEE d MMMM HH:mm", {
+            <p className="mt-1 text-base font-semibold text-stone-900">
+              Du{" "}
+              {format(assignment.weeklySchedule.weekStart, "EEEE d MMMM", {
+                locale: fr,
+              })}{" "}
+              au{" "}
+              {format(assignment.weeklySchedule.weekEnd, "EEEE d MMMM yyyy", {
                 locale: fr,
               })}
             </p>
-            {assignment.status === AssignmentStatus.LATE && (
-              <p className="mt-2 text-sm font-medium text-red-700">
-                Cette tâche est en retard.
+            <p className="mt-1 text-sm text-stone-500">
+              À terminer avant le{" "}
+              {format(assignment.weeklySchedule.deadline, "EEEE d MMMM 'à' HH:mm", {
+                locale: fr,
+              })}
+            </p>
+          </section>
+
+          <section className="mt-3 rounded-2xl border border-stone-200 bg-teal-50/80 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-teal-800">
+              Votre tâche cette semaine
+            </p>
+            <p className="mt-1 font-display text-2xl font-bold leading-tight text-teal-950">
+              Vous devez nettoyer : {assignment.task.name}
+            </p>
+            {assignment.task.description && (
+              <p className="mt-2 text-sm leading-relaxed text-teal-900/80">
+                {assignment.task.description}
               </p>
             )}
-          </div>
+            {assignment.status === AssignmentStatus.LATE && (
+              <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+                Cette tâche est en retard — merci de la faire et de valider dès
+                que possible.
+              </p>
+            )}
+          </section>
 
           <ValidateForm
             assignmentId={assignment.id}
