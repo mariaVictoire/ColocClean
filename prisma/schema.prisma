@@ -65,6 +65,8 @@ model Property {
   logoUrl               String?
   /** WhatsApp du bailleur — reçoit la photo / confirmation de validation */
   ownerWhatsappNumber   String?
+  /** Lundi de la semaine 1 du planning papier (cycle 6 semaines). */
+  cycleAnchorWeekStart  DateTime?        @db.Date
   whatsappFridayMessage String           @db.Text
   whatsappFriendlyMessage String         @db.Text
   whatsappLateMessage   String           @db.Text
@@ -160,8 +162,8 @@ model Assignment {
   checklist        AssignmentChecklist[]
   reminders        ReminderLog[]
 
-  @@unique([weeklyScheduleId, roomId])
   @@unique([weeklyScheduleId, taskId])
+  @@index([weeklyScheduleId, roomId])
   @@index([status])
   @@index([roomId])
 }

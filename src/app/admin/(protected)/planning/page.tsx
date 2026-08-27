@@ -45,6 +45,15 @@ export default async function PlanningPage() {
               {format(schedule.deadline, "EEEE d MMM HH:mm", { locale: fr })}
             </>
           )}
+          {property.cycleAnchorWeekStart && (
+            <>
+              {" "}
+              · cycle papier depuis le{" "}
+              {format(property.cycleAnchorWeekStart, "d MMM yyyy", {
+                locale: fr,
+              })}
+            </>
+          )}
         </p>
       </div>
 

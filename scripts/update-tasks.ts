@@ -1,7 +1,8 @@
 /**
- * Met à jour les 6 tâches (noms + checklists) sans toucher aux QR / comptes.
+ * Met à jour les 6 tâches (noms + checklists) selon le planning papier.
  * Usage : npx tsx scripts/update-tasks.ts
  */
+import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -17,84 +18,69 @@ const TASKS: Array<{
     description: "Nettoyage complet de la cuisine commune.",
     difficulty: 4,
     checklist: [
-      "Nettoyer l'évier",
       "Nettoyer le plan de travail",
-      "Nettoyer la plaque de cuisson",
+      "Nettoyer l'évier",
+      "Nettoyer le sol",
+      "Vider / nettoyer la poubelle de cuisine",
       "Nettoyer le micro-ondes",
-      "Nettoyer la table",
-      "Balayer le sol",
-      "Laver le sol",
+      "Nettoyer le four",
     ],
   },
   {
-    name: "Salle de bain (sans lavabo)",
+    name: "Salle de bain 1",
     description:
-      "Salle de bain sans lavabo : douche, surfaces et sol.",
+      "Salle de bain 1 (filles) : lavabo, douche, miroir et sol. Associée au WC 1.",
     difficulty: 4,
     checklist: [
+      "Nettoyer le lavabo",
       "Nettoyer la douche",
-      "Nettoyer les robinets",
-      "Nettoyer les surfaces et les murs accessibles",
-      "Essuyer poignée et interrupteur",
+      "Nettoyer le miroir",
+      "Nettoyer le sol",
     ],
   },
   {
-    name: "Salle de bain avec WC",
-    description:
-      "Salle de bain équipée d'un WC : nettoyage de la pièce et des toilettes.",
-    difficulty: 5,
+    name: "Salle de bain 2",
+    description: "Salle de bain 2 : lavabo, douche, miroir et sol.",
+    difficulty: 4,
     checklist: [
       "Nettoyer le lavabo",
+      "Nettoyer la douche",
       "Nettoyer le miroir",
-      "Nettoyer la douche ou la baignoire",
-      "Nettoyer les robinets",
-      "Retirer les cheveux",
-      "Nettoyer la cuvette des WC",
-      "Nettoyer l'abattant et le tour des WC",
-      "Vérifier le papier toilette",
-      "Nettoyer les surfaces",
-      "Balayer le sol",
-      "Laver le sol",
+      "Nettoyer le sol",
     ],
   },
   {
-    name: "WC indépendant (avec lavabo)",
-    description: "WC seul avec lavabo : toilettes, lavabo, miroir et sol.",
+    name: "WC 1",
+    description:
+      "WC 1 (filles) : cuvette, lavabo, sol et miroir. Associé à la salle de bain 1.",
     difficulty: 3,
     checklist: [
       "Nettoyer la cuvette",
-      "Nettoyer l'abattant",
       "Nettoyer le lavabo",
+      "Nettoyer le sol",
       "Nettoyer le miroir",
-      "Nettoyer les robinets",
-      "Balayer le sol",
-      "Laver le sol",
     ],
   },
   {
-    name: "Couloir et espaces communs",
-    description: "Entretien du couloir et des espaces communs.",
+    name: "Espace commun",
+    description: "Couloir, escalier et entrée : aspirateur, serpillère, dépoussiérage.",
     difficulty: 3,
     checklist: [
-      "Ranger les objets laissés au sol",
+      "Passer l'aspirateur",
+      "Passer la serpillère",
       "Dépoussiérer les surfaces",
-      "Nettoyer les poignées",
-      "Nettoyer les interrupteurs",
-      "Balayer le sol",
-      "Laver le sol",
       "Remettre l'espace en ordre",
     ],
   },
   {
     name: "Poubelles",
-    description: "Gestion des poubelles communes.",
+    description: "Vider les poubelles dès que possible.",
     difficulty: 2,
     checklist: [
       "Vider les poubelles communes",
       "Sortir les sacs",
       "Remplacer les sacs",
       "Vérifier qu'aucun sac ne reste dans les parties communes",
-      "Nettoyer les bacs si nécessaire",
     ],
   },
 ];
@@ -133,6 +119,7 @@ async function main() {
         name: def.name,
         description: def.description,
         difficulty: def.difficulty,
+        position: i + 1,
         checklistItems: {
           create: def.checklist.map((label, position) => ({
             label,
@@ -143,13 +130,11 @@ async function main() {
       },
     });
 
-    // Recréer les lignes checklist pour les assignments non terminés de cette tâche
     const openAssignments = await prisma.assignment.findMany({
       where: {
         taskId: task.id,
         status: { in: ["PENDING", "LATE", "UPCOMING"] },
       },
-      include: { task: { include: { checklistItems: true } } },
     });
 
     for (const assignment of openAssignments) {

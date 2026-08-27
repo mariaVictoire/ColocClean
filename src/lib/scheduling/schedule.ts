@@ -9,21 +9,46 @@ import {
 } from "date-fns";
 import { AssignmentStatus, WeeklyScheduleStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { generateBalancedRotation } from "@/lib/scheduling/rotation";
+import {
+  cycleWeekIndexFromAnchor,
+  fromDateOnlyUTC,
+  generateRandomCycleAssignments,
+  getFixedCycleAssignments,
+  TASK_POSITION_TO_KEY,
+  toDateOnlyUTC,
+  type CycleAssignment,
+  type TaskKey,
+} from "@/lib/scheduling/fixed-cycle";
 
 export function weekBoundsFor(date: Date) {
   const today = startOfDay(date);
-  const weekStart = today.getDay() === 1 ? today : previousMonday(today);
-  const weekEnd = nextSunday(weekStart);
-  return { weekStart, weekEnd };
+  const weekStartLocal = today.getDay() === 1 ? today : previousMonday(today);
+  const weekEndLocal = nextSunday(weekStartLocal);
+  return {
+    weekStart: toDateOnlyUTC(weekStartLocal),
+    weekEnd: toDateOnlyUTC(weekEndLocal),
+  };
 }
 
-export function deadlineFrom(
-  weekEnd: Date,
-  deadlineTime: string,
-): Date {
+export function deadlineFrom(weekEnd: Date, deadlineTime: string): Date {
   const [hours, minutes] = deadlineTime.split(":").map(Number);
-  return setSeconds(setMinutes(setHours(weekEnd, hours || 18), minutes || 0), 0);
+  return setSeconds(
+    setMinutes(setHours(weekEnd, hours || 18), minutes || 0),
+    0,
+  );
+}
+
+function resolveCycleAssignments(
+  weekStart: Date,
+  anchor: Date,
+  previous: CycleAssignment[] | undefined,
+): CycleAssignment[] {
+  const index = cycleWeekIndexFromAnchor(weekStart, anchor);
+  if (index >= 0 && index <= 5) {
+    return getFixedCycleAssignments(index);
+  }
+  // Au-delà du cycle papier (ou avant l'ancre) → aléatoire avec contrainte filles
+  return generateRandomCycleAssignments(previous);
 }
 
 export async function generateScheduleForProperty(
@@ -36,27 +61,36 @@ export async function generateScheduleForProperty(
 
   const { weekStart, weekEnd } = options?.weekStart
     ? {
-        weekStart: startOfDay(options.weekStart),
-        weekEnd: nextSunday(startOfDay(options.weekStart)),
+        weekStart: toDateOnlyUTC(startOfDay(options.weekStart)),
+        weekEnd: toDateOnlyUTC(nextSunday(startOfDay(options.weekStart))),
       }
     : weekBoundsFor(new Date());
+
+  const weekStartLocal = fromDateOnlyUTC(weekStart);
+  const weekEndLocal = fromDateOnlyUTC(weekEnd);
 
   const existing = await prisma.weeklySchedule.findUnique({
     where: {
       propertyId_weekStart: { propertyId, weekStart },
     },
-    include: { assignments: true },
+    include: {
+      assignments: { include: { room: true, task: true } },
+    },
   });
 
   if (existing && !options?.force) {
     return { schedule: existing, created: false as const };
   }
 
-  // En régénération : éviter de recoller le même planning qu'on remplace
-  const replacedAssignments = (existing?.assignments ?? []).map((a) => ({
-    roomId: a.roomId,
-    taskId: a.taskId,
-  }));
+  const replacedCycle: CycleAssignment[] | undefined = existing
+    ? existing.assignments
+        .map((a) => {
+          const key = TASK_POSITION_TO_KEY[a.task.position];
+          if (!key) return null;
+          return { taskKey: key, roomNumber: a.room.number };
+        })
+        .filter((x): x is CycleAssignment => x !== null)
+    : undefined;
 
   if (existing && options?.force) {
     await prisma.weeklySchedule.delete({ where: { id: existing.id } });
@@ -78,29 +112,56 @@ export async function generateScheduleForProperty(
       weekStart: { lt: weekStart },
     },
     orderBy: { weekStart: "desc" },
-    include: { assignments: true },
+    include: {
+      assignments: { include: { room: true, task: true } },
+    },
   });
 
-  const previousFromLastWeek = (previousSchedule?.assignments ?? []).map(
-    (a) => ({
-      roomId: a.roomId,
-      taskId: a.taskId,
-    }),
-  );
+  const previousFromLastWeek: CycleAssignment[] | undefined =
+    previousSchedule?.assignments
+      .map((a) => {
+        const key = TASK_POSITION_TO_KEY[a.task.position];
+        if (!key) return null;
+        return { taskKey: key as TaskKey, roomNumber: a.room.number };
+      })
+      .filter((x): x is CycleAssignment => x !== null);
 
-  // Priorité : ne pas répéter le planning qu'on régénère, sinon la semaine d'avant
   const previous =
-    replacedAssignments.length > 0
-      ? replacedAssignments
+    replacedCycle && replacedCycle.length > 0
+      ? replacedCycle
       : previousFromLastWeek;
 
-  const rotation = generateBalancedRotation(
-    rooms.map((r) => ({ id: r.id, number: r.number })),
-    tasks.map((t) => ({ id: t.id, difficulty: t.difficulty })),
+  if (!property.cycleAnchorWeekStart) {
+    throw new Error(
+      "cycleAnchorWeekStart manquant : définissez le lundi de la semaine 1 du planning papier.",
+    );
+  }
+
+  const cyclePairs = resolveCycleAssignments(
+    weekStartLocal,
+    fromDateOnlyUTC(property.cycleAnchorWeekStart),
     previous,
   );
 
-  const deadline = deadlineFrom(weekEnd, property.deadlineTime);
+  const taskByKey = new Map<TaskKey, (typeof tasks)[number]>();
+  for (const task of tasks) {
+    const key = TASK_POSITION_TO_KEY[task.position];
+    if (key) taskByKey.set(key, task);
+  }
+
+  const roomByNumber = new Map(rooms.map((r) => [r.number, r]));
+
+  const rotation: { roomId: string; taskId: string }[] = [];
+  for (const pair of cyclePairs) {
+    const room = roomByNumber.get(pair.roomNumber);
+    const task = taskByKey.get(pair.taskKey);
+    if (!room || !task) {
+      throw new Error(
+        `Mapping cycle invalide: tâche ${pair.taskKey} → chambre ${pair.roomNumber}`,
+      );
+    }
+    rotation.push({ roomId: room.id, taskId: task.id });
+  }
 
   const schedule = await prisma.$transaction(async (tx) => {
     const created = await tx.weeklySchedule.create({
@@ -108,7 +169,7 @@ export async function generateScheduleForProperty(
         propertyId,
         weekStart,
         weekEnd,
-        deadline,
+        deadline: deadlineFrom(weekEndLocal, property.deadlineTime),
         status: WeeklyScheduleStatus.ACTIVE,
         generatedAutomatically: true,
       },
@@ -144,8 +205,6 @@ export async function generateScheduleForProperty(
 
 export async function generateNextWeekIfNeeded(propertyId: string) {
   const { weekStart } = weekBoundsFor(new Date());
-  // Si on est lundi (génération), cibler la semaine courante ;
-  // sinon générer la semaine suivante à partir du prochain lundi.
   const today = startOfDay(new Date());
   const targetStart =
     today.getDay() === 1 ? weekStart : addDays(weekStart, 7);
