@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
+import { assertTaskOwnedBySession } from "@/lib/property";
 import { appConfig } from "@/config/app";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,11 @@ export default async function TacheDetailPage({
 }) {
   await requireOwner();
   const { id } = await params;
+  try {
+    await assertTaskOwnedBySession(id);
+  } catch {
+    notFound();
+  }
   const task = await prisma.task.findUnique({
     where: { id },
     include: {

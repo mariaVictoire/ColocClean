@@ -168,14 +168,15 @@ async function main() {
     data: {
       email: "owner@coloclean.demo",
       passwordHash,
-      name: "Propriétaire Démo",
+      name: "Arnold",
       role: UserRole.OWNER,
     },
   });
 
   const property = await prisma.property.create({
     data: {
-      name: "Colocation Démo",
+      name: "Colocation Arnold",
+      ownerId: owner.id,
       timezone: "Europe/Paris",
       language: "fr",
       roomCount: 6,

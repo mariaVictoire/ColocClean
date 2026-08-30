@@ -1,6 +1,6 @@
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
-import { getDefaultProperty } from "@/lib/property";
+import { getActiveOwnedProperty } from "@/lib/property";
 import { roomSlug } from "@/lib/security/tokens";
 import { appConfig } from "@/config/app";
 import { RoomEditor } from "@/components/admin/RoomEditor";
@@ -14,7 +14,7 @@ export const metadata = {
 
 export default async function ChambresPage() {
   await requireOwner();
-  const property = await getDefaultProperty();
+  const { property } = await getActiveOwnedProperty();
   const rooms = await prisma.room.findMany({
     where: { propertyId: property.id },
     orderBy: { number: "asc" },

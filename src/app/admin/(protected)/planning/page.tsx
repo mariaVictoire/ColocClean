@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
-import { getDefaultProperty } from "@/lib/property";
+import { getActiveOwnedProperty } from "@/lib/property";
 import { weekBoundsFor } from "@/lib/scheduling/schedule";
 import { StatusBadge } from "@/components/StatusBadge";
 import { appConfig } from "@/config/app";
@@ -16,7 +16,7 @@ export const metadata = {
 
 export default async function PlanningPage() {
   await requireOwner();
-  const property = await getDefaultProperty();
+  const { property } = await getActiveOwnedProperty();
   const { weekStart, weekEnd } = weekBoundsFor(new Date());
 
   const schedule = await prisma.weeklySchedule.findUnique({

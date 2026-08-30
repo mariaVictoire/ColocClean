@@ -40,19 +40,22 @@ enum ReminderType {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String     @id @default(cuid())
+  email        String     @unique
   passwordHash String
   name         String?
-  role         UserRole  @default(OWNER)
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  role         UserRole   @default(OWNER)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   auditLogs    AuditLog[]
+  properties   Property[]
 }
 
 model Property {
   id                    String           @id @default(cuid())
   name                  String
+  ownerId               String
+  owner                 User             @relation(fields: [ownerId], references: [id], onDelete: Restrict)
   timezone              String           @default("Europe/Paris")
   language              String           @default("fr")
   roomCount             Int              @default(6)
@@ -75,6 +78,8 @@ model Property {
   rooms                 Room[]
   tasks                 Task[]
   weeklySchedules       WeeklySchedule[]
+
+  @@index([ownerId])
 }
 
 model Room {

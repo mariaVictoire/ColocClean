@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
-import { getDefaultProperty } from "@/lib/property";
+import { getActiveOwnedProperty } from "@/lib/property";
 import { appConfig } from "@/config/app";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export const metadata = {
 
 export default async function TachesPage() {
   await requireOwner();
-  const property = await getDefaultProperty();
+  const { property } = await getActiveOwnedProperty();
   const tasks = await prisma.task.findMany({
     where: { propertyId: property.id },
     include: { _count: { select: { checklistItems: true } } },

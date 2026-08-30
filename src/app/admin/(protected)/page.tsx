@@ -1,12 +1,13 @@
-import { format } from "date-fns";
-import { fr } from "date-fns/locale";
-import { AssignmentStatus } from "@prisma/client";
 import { requireOwner } from "@/lib/auth-helpers";
+import { getActiveOwnedProperty } from "@/lib/property";
 import { prisma } from "@/lib/db";
 import { weekBoundsFor } from "@/lib/scheduling/schedule";
 import { StatusBadge } from "@/components/StatusBadge";
 import { appConfig } from "@/config/app";
 import Link from "next/link";
+import { format } from "date-fns";
+import { fr } from "date-fns/locale";
+import { AssignmentStatus } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -23,33 +24,32 @@ export default async function AdminDashboardPage() {
   let loadError: string | null = null;
 
   try {
-    property = await prisma.property.findFirst({
-      orderBy: { createdAt: "asc" },
-    });
+    const active = await getActiveOwnedProperty();
+    property = active.property;
 
-    if (property) {
-      schedule = await prisma.weeklySchedule.findUnique({
-        where: {
-          propertyId_weekStart: {
-            propertyId: property.id,
-            weekStart,
-          },
+    schedule = await prisma.weeklySchedule.findUnique({
+      where: {
+        propertyId_weekStart: {
+          propertyId: property.id,
+          weekStart,
         },
-        include: {
-          assignments: {
-            include: {
-              room: true,
-              task: true,
-            },
-            orderBy: { room: { number: "asc" } },
+      },
+      include: {
+        assignments: {
+          include: {
+            room: true,
+            task: true,
           },
+          orderBy: { room: { number: "asc" } },
         },
-      });
-    }
+      },
+    });
   } catch (error) {
     console.error("[admin/dashboard]", error);
     loadError =
-      "Impossible de charger les données. Vérifie DATABASE_URL sur Vercel.";
+      error instanceof Error
+        ? error.message
+        : "Impossible de charger les données.";
   }
 
   const counts = {

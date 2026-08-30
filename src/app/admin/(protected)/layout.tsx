@@ -1,6 +1,8 @@
 import { requireOwner } from "@/lib/auth-helpers";
+import { getActiveOwnedProperty } from "@/lib/property";
 import { appConfig } from "@/config/app";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { PropertySwitcher } from "@/components/admin/PropertySwitcher";
 import { signOutAction } from "@/lib/actions/auth";
 
 export default async function AdminProtectedLayout({
@@ -8,19 +10,36 @@ export default async function AdminProtectedLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await requireOwner();
+  await requireOwner();
+  let properties: { id: string; name: string }[] = [];
+  let activePropertyId = "";
+  let activeName = "";
+  let email = "";
+
+  try {
+    const { session, property, properties: owned } =
+      await getActiveOwnedProperty();
+    email = session.user.email;
+    properties = owned.map((p) => ({ id: p.id, name: p.name }));
+    activePropertyId = property.id;
+    activeName = property.name;
+  } catch {
+    const session = await requireOwner();
+    email = session.user.email;
+  }
 
   return (
     <div className="flex min-h-dvh flex-col bg-stone-50">
       <header className="border-b border-stone-200/80 bg-white/90 backdrop-blur">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 px-4 py-3 pt-[max(0.75rem,var(--safe-top))] sm:px-6">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <p className="truncate font-display text-lg font-bold text-teal-900 sm:text-xl">
                 {appConfig.name}
               </p>
               <p className="truncate text-xs text-stone-500 sm:text-sm">
-                {session.user.email}
+                {email}
+                {activeName ? ` · ${activeName}` : ""}
               </p>
             </div>
             <form action={signOutAction}>
@@ -32,6 +51,14 @@ export default async function AdminProtectedLayout({
               </button>
             </form>
           </div>
+
+          {properties.length > 0 && (
+            <PropertySwitcher
+              properties={properties}
+              activePropertyId={activePropertyId}
+            />
+          )}
+
           <AdminNav />
         </div>
       </header>

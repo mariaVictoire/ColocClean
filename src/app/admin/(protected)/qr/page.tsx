@@ -2,7 +2,7 @@ import QRCode from "qrcode";
 import { headers } from "next/headers";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
-import { getDefaultProperty } from "@/lib/property";
+import { getActiveOwnedProperty } from "@/lib/property";
 import { roomSlug } from "@/lib/security/tokens";
 import { shortValidationPath } from "@/lib/whatsapp/messages";
 import { appConfig } from "@/config/app";
@@ -23,7 +23,7 @@ async function getBaseUrl() {
 
 export default async function QrPage() {
   await requireOwner();
-  const property = await getDefaultProperty();
+  const { property } = await getActiveOwnedProperty();
   const baseUrl = await getBaseUrl();
   const rooms = await prisma.room.findMany({
     where: { propertyId: property.id, isActive: true },

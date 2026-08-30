@@ -1,7 +1,7 @@
 import { AssignmentStatus, ReminderType } from "@prisma/client";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
-import { getDefaultProperty } from "@/lib/property";
+import { getActiveOwnedProperty } from "@/lib/property";
 import { weekBoundsFor } from "@/lib/scheduling/schedule";
 import {
   fillWhatsAppTemplate,
@@ -40,7 +40,7 @@ export default async function WhatsAppPage({
     typeParam === "LATE" ? "LATE" : "FRIDAY";
 
   const baseUrl = await getBaseUrl();
-  const property = await getDefaultProperty();
+  const { property } = await getActiveOwnedProperty();
   const { weekStart } = weekBoundsFor(new Date());
   const schedule = await prisma.weeklySchedule.findUnique({
     where: {

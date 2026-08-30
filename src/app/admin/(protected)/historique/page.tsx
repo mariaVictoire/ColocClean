@@ -2,7 +2,7 @@ import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
-import { getDefaultProperty } from "@/lib/property";
+import { getActiveOwnedProperty } from "@/lib/property";
 import { REMINDER_TYPE_LABELS } from "@/lib/constants/reminders";
 import { StatusBadge } from "@/components/StatusBadge";
 import { appConfig } from "@/config/app";
@@ -15,7 +15,7 @@ export const metadata = {
 
 export default async function HistoriquePage() {
   await requireOwner();
-  const property = await getDefaultProperty();
+  const { property } = await getActiveOwnedProperty();
 
   const [assignments, reminders] = await Promise.all([
     prisma.assignment.findMany({

@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 import { AssignmentStatus } from "@prisma/client";
 import { requireOwner } from "@/lib/auth-helpers";
 import { prisma } from "@/lib/db";
-import { getDefaultProperty } from "@/lib/property";
+import {
+  assertAssignmentOwnedBySession,
+  getActiveOwnedProperty,
+} from "@/lib/property";
 import {
   generateScheduleForProperty,
   markLateAssignments,
@@ -13,7 +16,7 @@ import {
 
 export async function generateCurrentWeekSchedule() {
   await requireOwner();
-  const property = await getDefaultProperty();
+  const { property } = await getActiveOwnedProperty();
   const { weekStart } = weekBoundsFor(new Date());
   const result = await generateScheduleForProperty(property.id, {
     weekStart,
@@ -24,12 +27,15 @@ export async function generateCurrentWeekSchedule() {
   revalidatePath("/admin/whatsapp");
   return result.created
     ? { ok: true as const, message: "Planning généré." }
-    : { ok: true as const, message: "Le planning de cette semaine existe déjà." };
+    : {
+        ok: true as const,
+        message: "Le planning de cette semaine existe déjà.",
+      };
 }
 
 export async function regenerateCurrentWeekSchedule() {
   await requireOwner();
-  const property = await getDefaultProperty();
+  const { property } = await getActiveOwnedProperty();
   const { weekStart } = weekBoundsFor(new Date());
   await generateScheduleForProperty(property.id, {
     weekStart,
@@ -46,6 +52,7 @@ export async function markAssignmentStatus(
   status: "EXCUSED" | "PENDING" | "COMPLETED" | "LATE",
 ) {
   await requireOwner();
+  await assertAssignmentOwnedBySession(assignmentId);
   await prisma.assignment.update({
     where: { id: assignmentId },
     data: {
@@ -61,7 +68,7 @@ export async function markAssignmentStatus(
 
 export async function runMarkLateNow() {
   await requireOwner();
-  const property = await getDefaultProperty();
+  const { property } = await getActiveOwnedProperty();
   const count = await markLateAssignments(property.id);
   revalidatePath("/admin");
   revalidatePath("/admin/planning");

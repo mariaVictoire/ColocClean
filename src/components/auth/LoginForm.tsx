@@ -69,9 +69,12 @@ export function LoginForm() {
       </button>
 
       <p className="text-center text-sm leading-snug text-stone-500">
-        Compte démo
+        Comptes
         <span className="mt-0.5 block break-all font-medium text-stone-700">
-          owner@coloclean.demo
+          Arnold : owner@coloclean.demo
+        </span>
+        <span className="mt-0.5 block break-all font-medium text-stone-700">
+          Ralps : ralps@coloclean.demo
         </span>
       </p>
       <p className="sr-only">Application {appConfig.name}</p>
