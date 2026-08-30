@@ -15,14 +15,22 @@ const phoneSchema = z
     message: "Numéro invalide",
   });
 
+const tenantNameSchema = z.string().trim().max(80);
+
 export async function updateRoomWhatsApp(
   roomId: string,
   whatsappNumber: string,
+  tenantName?: string,
 ) {
   await requireOwner();
-  const parsed = phoneSchema.safeParse(whatsappNumber);
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Numéro invalide" };
+  const parsedPhone = phoneSchema.safeParse(whatsappNumber);
+  if (!parsedPhone.success) {
+    return { error: parsedPhone.error.issues[0]?.message ?? "Numéro invalide" };
+  }
+
+  const parsedName = tenantNameSchema.safeParse(tenantName ?? "");
+  if (!parsedName.success) {
+    return { error: "Nom trop long (80 caractères max)" };
   }
 
   await assertRoomOwnedBySession(roomId);
@@ -30,8 +38,9 @@ export async function updateRoomWhatsApp(
   await prisma.room.update({
     where: { id: roomId },
     data: {
+      tenantName: parsedName.data === "" ? null : parsedName.data,
       whatsappNumber:
-        parsed.data === "" ? null : parsed.data.replace(/\s/g, ""),
+        parsedPhone.data === "" ? null : parsedPhone.data.replace(/\s/g, ""),
     },
   });
 

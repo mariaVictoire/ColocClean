@@ -25,7 +25,7 @@ export default async function ChambresPage() {
       <div>
         <h1 className="text-xl font-semibold text-stone-900">Chambres</h1>
         <p className="mt-1 text-sm text-stone-600">
-          Numéros WhatsApp et tokens QR permanents.
+          Locataires, WhatsApp et tokens QR permanents.
         </p>
       </div>
 
@@ -40,6 +40,7 @@ export default async function ChambresPage() {
               key={room.id}
               roomId={room.id}
               label={room.label}
+              tenantName={room.tenantName}
               whatsappNumber={room.whatsappNumber}
               qrPath={qrPath}
             />

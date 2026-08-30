@@ -126,7 +126,10 @@ export default async function WhatsAppPage({
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <p className="font-medium text-stone-900">{a.room.label}</p>
+                    <p className="font-medium text-stone-900">
+                      {a.room.label}
+                      {a.room.tenantName ? ` · ${a.room.tenantName}` : ""}
+                    </p>
                     <p className="text-sm text-stone-500">{a.task.name}</p>
                   </div>
                   <StatusBadge status={a.status} />

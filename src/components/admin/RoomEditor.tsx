@@ -6,14 +6,17 @@ import { regenerateRoomQr, updateRoomWhatsApp } from "@/lib/actions/rooms";
 export function RoomEditor({
   roomId,
   label,
+  tenantName,
   whatsappNumber,
   qrPath,
 }: {
   roomId: string;
   label: string;
+  tenantName: string | null;
   whatsappNumber: string | null;
   qrPath: string;
 }) {
+  const [name, setName] = useState(tenantName ?? "");
   const [phone, setPhone] = useState(whatsappNumber ?? "");
   const [message, setMessage] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -28,6 +31,19 @@ export function RoomEditor({
       </div>
 
       <label className="mt-4 block text-sm font-medium text-stone-700">
+        Locataire
+        <input
+          type="text"
+          autoComplete="name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={80}
+          className="touch-target mt-1.5 w-full rounded-xl border border-stone-300 px-3.5 text-base outline-none focus:border-teal-700 focus:ring-2 focus:ring-teal-700/30"
+          placeholder="Prénom ou nom"
+        />
+      </label>
+
+      <label className="mt-3 block text-sm font-medium text-stone-700">
         WhatsApp
         <input
           type="tel"
@@ -46,7 +62,7 @@ export function RoomEditor({
           onClick={() => {
             setMessage(null);
             startTransition(async () => {
-              const res = await updateRoomWhatsApp(roomId, phone);
+              const res = await updateRoomWhatsApp(roomId, phone, name);
               setMessage(res.error ?? "Enregistré");
             });
           }}
