@@ -1,5 +1,4 @@
 import {
-  addDays,
   nextSunday,
   previousMonday,
   setHours,
@@ -223,13 +222,27 @@ export async function generateScheduleForProperty(
   return { schedule, created: true as const };
 }
 
-export async function generateNextWeekIfNeeded(propertyId: string) {
+export async function generateCurrentWeekSchedule(propertyId: string) {
   const { weekStart } = weekBoundsFor(new Date());
-  const today = startOfDay(new Date());
-  const targetStart =
-    today.getDay() === 1 ? weekStart : addDays(weekStart, 7);
+  return generateScheduleForProperty(propertyId, { weekStart, force: false });
+}
 
-  return generateScheduleForProperty(propertyId, { weekStart: targetStart });
+/** @deprecated préférer generateCurrentWeekSchedule (lundi = semaine courante) */
+export async function generateNextWeekIfNeeded(propertyId: string) {
+  return generateCurrentWeekSchedule(propertyId);
+}
+
+export async function closePastActiveSchedules(propertyId?: string) {
+  const { weekStart } = weekBoundsFor(new Date());
+  const result = await prisma.weeklySchedule.updateMany({
+    where: {
+      status: WeeklyScheduleStatus.ACTIVE,
+      weekStart: { lt: weekStart },
+      ...(propertyId ? { propertyId } : {}),
+    },
+    data: { status: WeeklyScheduleStatus.CLOSED },
+  });
+  return result.count;
 }
 
 export async function markLateAssignments(propertyId?: string) {

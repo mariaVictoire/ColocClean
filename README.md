@@ -157,7 +157,7 @@ Créer le bucket : automatique au premier upload (bucket public `validation-phot
 
 Définis dans `vercel.json` :
 
-- lundi 07:00 UTC → `/api/cron/generate-schedule`
+- lundi 05:00 UTC (~07h Paris) → `/api/cron/generate-schedule` (planning de la semaine pour toutes les colocations)
 - dimanche 18:05 UTC → `/api/cron/mark-late`
 
 Les routes sont protégées par `CRON_SECRET`.
