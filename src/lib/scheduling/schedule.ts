@@ -9,7 +9,6 @@ import {
 } from "date-fns";
 import {
   AssignmentStatus,
-  RotationMode,
   WeeklyScheduleStatus,
 } from "@prisma/client";
 import { prisma } from "@/lib/db";
@@ -123,7 +122,7 @@ export async function generateScheduleForProperty(
 
   let rotation: { roomId: string; taskId: string }[];
 
-  if (property.rotationMode === RotationMode.BALANCED) {
+  if (property.rotationMode === "BALANCED") {
     const prevForBalance =
       previousSchedule?.assignments.map((a) => ({
         roomId: a.roomId,

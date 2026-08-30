@@ -6,7 +6,6 @@ import {
   type TaskDef,
 } from "@/lib/property-defaults";
 import { weekBoundsFor } from "@/lib/scheduling/schedule";
-import { RotationMode } from "@prisma/client";
 
 /** Crée une colocation complète : 6 chambres + 6 tâches (sans planning). */
 export async function createPropertyForOwner(
@@ -15,12 +14,12 @@ export async function createPropertyForOwner(
   roomCount = 6,
   options?: {
     taskDefs?: TaskDef[];
-    rotationMode?: RotationMode;
+    rotationMode?: "PAPER" | "BALANCED";
   },
 ) {
   const { weekStart } = weekBoundsFor(new Date());
   const taskDefs = options?.taskDefs ?? BALANCED_TASK_DEFS;
-  const rotationMode = options?.rotationMode ?? RotationMode.BALANCED;
+  const rotationMode = options?.rotationMode ?? "BALANCED";
 
   return prisma.$transaction(async (tx) => {
     const property = await tx.property.create({
