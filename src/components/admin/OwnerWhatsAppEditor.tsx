@@ -31,7 +31,7 @@ export function OwnerWhatsAppEditor({
       </h2>
       <p className="mt-1 text-sm text-teal-900/80">
         Après validation, le colocateur envoie la photo ou la vidéo de preuve sur
-        ce numéro (via WhatsApp). Rien n’est stocké dans l’application.
+        ce numéro (via WhatsApp).
       </p>
       <label className="mt-3 block text-sm font-medium text-stone-700">
         Numéro (ex. +33612345678)
