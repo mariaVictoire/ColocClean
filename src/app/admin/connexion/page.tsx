@@ -8,13 +8,13 @@ export const metadata = {
 
 export default function ConnexionPage() {
   return (
-    <main className="relative flex min-h-dvh flex-col px-4 pt-[max(1.25rem,var(--safe-top))] pb-[max(1.25rem,var(--safe-bottom))] sm:items-center sm:justify-center sm:py-12">
+    <main className="relative flex min-h-dvh flex-col items-center justify-center px-4 py-[max(1.25rem,var(--safe-top))] pb-[max(1.25rem,var(--safe-bottom))]">
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_#ccfbf1_0%,_#fafaf9_45%,_#f5f5f4_100%)]"
       />
 
-      <div className="mx-auto flex w-full max-w-md flex-1 flex-col sm:flex-none sm:justify-center">
+      <div className="mx-auto w-full max-w-md">
         <div className="mb-5 text-center sm:mb-8">
           <Link href="/" className="inline-block">
             <p className="font-display text-[1.75rem] font-bold tracking-tight text-teal-900 sm:text-3xl">
@@ -26,7 +26,7 @@ export default function ConnexionPage() {
           </p>
         </div>
 
-        <div className="flex flex-1 flex-col rounded-2xl border border-stone-200/80 bg-white/90 p-4 shadow-sm backdrop-blur sm:flex-none sm:p-8">
+        <div className="rounded-2xl border border-stone-200/80 bg-white/90 p-4 shadow-sm backdrop-blur sm:p-8">
           <h1 className="mb-4 text-lg font-semibold text-stone-900 sm:mb-6 sm:text-xl">
             Connexion
           </h1>
