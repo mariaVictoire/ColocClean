@@ -78,10 +78,10 @@ export default async function PlanningPage() {
                 <p className="font-medium text-stone-900">{a.room.label}</p>
                 <p className="text-sm text-stone-500">{a.task.name}</p>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-2">
                 <StatusBadge status={a.status} />
-                {a.status !== "EXCUSED" && a.status !== "COMPLETED" && (
-                  <ExcuseButton assignmentId={a.id} />
+                {a.status !== "COMPLETED" && (
+                  <ExcuseButton assignmentId={a.id} status={a.status} />
                 )}
               </div>
             </li>

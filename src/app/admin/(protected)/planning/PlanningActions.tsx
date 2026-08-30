@@ -72,20 +72,50 @@ export function PlanningActions({ hasSchedule }: { hasSchedule: boolean }) {
   );
 }
 
-export function ExcuseButton({ assignmentId }: { assignmentId: string }) {
+export function ExcuseButton({
+  assignmentId,
+  status,
+}: {
+  assignmentId: string;
+  status: "EXCUSED" | "PENDING" | "COMPLETED" | "LATE" | "UPCOMING" | "CANCELLED";
+}) {
   const [pending, startTransition] = useTransition();
+  const isExcused = status === "EXCUSED";
+
   return (
     <button
       type="button"
       disabled={pending}
-      onClick={() =>
+      title={
+        isExcused
+          ? "Remettre la tâche comme à faire"
+          : "Dispenser la chambre de cette tâche pour cette semaine"
+      }
+      onClick={() => {
+        if (isExcused) {
+          startTransition(async () => {
+            await markAssignmentStatus(assignmentId, "PENDING");
+          });
+          return;
+        }
+        if (
+          !confirm(
+            "Exempter cette chambre pour cette semaine ? La tâche ne sera plus attendue ni en retard.",
+          )
+        ) {
+          return;
+        }
         startTransition(async () => {
           await markAssignmentStatus(assignmentId, "EXCUSED");
-        })
-      }
-      className="text-xs font-medium text-stone-500 underline-offset-2 hover:underline disabled:opacity-50"
+        });
+      }}
+      className={`touch-target inline-flex items-center justify-center rounded-xl border px-3 text-xs font-semibold disabled:opacity-50 ${
+        isExcused
+          ? "border-teal-200 bg-teal-50 text-teal-900 hover:bg-teal-100"
+          : "border-stone-300 bg-white text-stone-700 hover:bg-stone-50 active:bg-stone-100"
+      }`}
     >
-      Excusé
+      {pending ? "…" : isExcused ? "Annuler l’excuse" : "Exempter"}
     </button>
   );
 }

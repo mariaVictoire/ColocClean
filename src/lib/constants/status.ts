@@ -5,7 +5,7 @@ export const ASSIGNMENT_STATUS_LABELS: Record<AssignmentStatus, string> = {
   PENDING: "En attente",
   COMPLETED: "Terminé",
   LATE: "En retard",
-  EXCUSED: "Excusé",
+  EXCUSED: "Exempté",
   CANCELLED: "Annulé",
 };
 
