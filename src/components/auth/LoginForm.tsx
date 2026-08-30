@@ -27,9 +27,8 @@ export function LoginForm() {
           autoCapitalize="none"
           autoCorrect="off"
           required
-          defaultValue="arnold@coloclean.com"
           className="touch-target w-full rounded-xl border border-stone-300 bg-white px-3.5 text-base text-stone-900 outline-none ring-teal-700/30 transition focus:border-teal-700 focus:ring-2"
-          placeholder="arnold@coloclean.com"
+          placeholder="email@exemple.com"
         />
       </div>
 
@@ -68,15 +67,6 @@ export function LoginForm() {
         {pending ? "Connexion…" : "Se connecter"}
       </button>
 
-      <p className="text-center text-sm leading-snug text-stone-500">
-        Comptes
-        <span className="mt-0.5 block break-all font-medium text-stone-700">
-          Arnold : arnold@coloclean.com
-        </span>
-        <span className="mt-0.5 block break-all font-medium text-stone-700">
-          Ralph : ralph@coloclean.com
-        </span>
-      </p>
       <p className="sr-only">Application {appConfig.name}</p>
     </form>
   );
