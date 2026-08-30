@@ -166,7 +166,7 @@ async function main() {
 
   const owner = await prisma.user.create({
     data: {
-      email: "owner@coloclean.demo",
+      email: "arnold@coloclean.com",
       passwordHash,
       name: "Arnold",
       role: UserRole.OWNER,
@@ -321,7 +321,7 @@ async function main() {
   console.log("✅ Seed terminé");
   console.log("");
   console.log("Identifiants de démonstration :");
-  console.log("  Email    : owner@coloclean.demo");
+  console.log("  Email    : arnold@coloclean.com");
   console.log("  Mot de passe : DemoOwner123!");
   console.log("");
   console.log("Tokens QR (exemples) :");

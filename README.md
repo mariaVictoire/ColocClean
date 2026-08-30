@@ -67,7 +67,7 @@ Alternatives : [Neon](https://neon.tech) (mêmes variables) ou Docker (`docker c
 
 | Champ        | Valeur                 |
 | ------------ | ---------------------- |
-| Email        | `owner@coloclean.demo` |
+| Email        | `arnold@coloclean.com` |
 | Mot de passe | `DemoOwner123!`        |
 
 Après le seed, les tokens QR des 6 chambres sont affichés dans la console.
