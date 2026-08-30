@@ -32,6 +32,13 @@ enum WeeklyScheduleStatus {
   CLOSED
 }
 
+enum RotationMode {
+  /** Cycle papier 6 semaines (Arnold) — une chambre peut avoir 2 tâches */
+  PAPER
+  /** 1 tâche par chambre chaque semaine */
+  BALANCED
+}
+
 enum ReminderType {
   FRIDAY
   FRIENDLY
@@ -70,6 +77,7 @@ model Property {
   ownerWhatsappNumber   String?
   /** Lundi de la semaine 1 du planning papier (cycle 6 semaines). */
   cycleAnchorWeekStart  DateTime?        @db.Date
+  rotationMode          RotationMode     @default(BALANCED)
   whatsappFridayMessage String           @db.Text
   whatsappFriendlyMessage String         @db.Text
   whatsappLateMessage   String           @db.Text

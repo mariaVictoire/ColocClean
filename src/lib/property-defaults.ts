@@ -28,12 +28,15 @@ Merci de régulariser et de valider la tâche :
 - via ce lien : {lien_validation}`,
 } as const;
 
-export const DEFAULT_TASK_DEFS: Array<{
+export type TaskDef = {
   name: string;
   description: string;
   difficulty: number;
   checklist: string[];
-}> = [
+};
+
+/** Tâches cycle papier Arnold (SDB1+WC1 filles, espace, poubelles). */
+export const PAPER_TASK_DEFS: TaskDef[] = [
   {
     name: "Cuisine",
     description: "Nettoyage complet de la cuisine commune.",
@@ -106,6 +109,86 @@ export const DEFAULT_TASK_DEFS: Array<{
     ],
   },
 ];
+
+/**
+ * Espaces communs type Ralph :
+ * 2 SDB (dont 1 avec WC), 1 WC indépendant, cuisine, balcon, couloir.
+ * → 6 tâches, 1 par chambre chaque semaine.
+ */
+export const BALANCED_TASK_DEFS: TaskDef[] = [
+  {
+    name: "Cuisine",
+    description: "Nettoyage complet de la cuisine commune.",
+    difficulty: 4,
+    checklist: [
+      "Nettoyer le plan de travail",
+      "Nettoyer l'évier",
+      "Nettoyer le sol",
+      "Vider / nettoyer la poubelle de cuisine",
+      "Nettoyer le micro-ondes",
+      "Nettoyer le four",
+    ],
+  },
+  {
+    name: "Salle de bain 1 (avec WC)",
+    description: "Salle de bain avec WC : lavabo, douche, WC, miroir et sol.",
+    difficulty: 4,
+    checklist: [
+      "Nettoyer le lavabo",
+      "Nettoyer la douche",
+      "Nettoyer le WC",
+      "Nettoyer le miroir",
+      "Nettoyer le sol",
+    ],
+  },
+  {
+    name: "Salle de bain 2",
+    description: "Salle de bain : lavabo, douche, miroir et sol.",
+    difficulty: 4,
+    checklist: [
+      "Nettoyer le lavabo",
+      "Nettoyer la douche",
+      "Nettoyer le miroir",
+      "Nettoyer le sol",
+    ],
+  },
+  {
+    name: "WC indépendant",
+    description: "WC séparé : cuvette, sol et surfaces.",
+    difficulty: 3,
+    checklist: [
+      "Nettoyer la cuvette",
+      "Nettoyer le sol",
+      "Nettoyer les surfaces / miroir",
+      "Vérifier le papier toilette",
+    ],
+  },
+  {
+    name: "Balcon",
+    description: "Balcon commun : balayage, nettoyage et rangement.",
+    difficulty: 2,
+    checklist: [
+      "Balayer le balcon",
+      "Nettoyer les surfaces",
+      "Ranger les objets / plantes",
+      "Vider le cendrier / déchets",
+    ],
+  },
+  {
+    name: "Couloir",
+    description: "Couloir et passages : aspirateur, serpillère, dépoussiérage.",
+    difficulty: 3,
+    checklist: [
+      "Passer l'aspirateur",
+      "Passer la serpillère",
+      "Dépoussiérer les surfaces",
+      "Remettre le passage en ordre",
+    ],
+  },
+];
+
+/** Alias historique = tâches papier Arnold */
+export const DEFAULT_TASK_DEFS = PAPER_TASK_DEFS;
 
 export function createQrToken(): string {
   return randomBytes(32).toString("hex");

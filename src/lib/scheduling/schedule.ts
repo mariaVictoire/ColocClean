@@ -7,8 +7,13 @@ import {
   setSeconds,
   startOfDay,
 } from "date-fns";
-import { AssignmentStatus, WeeklyScheduleStatus } from "@prisma/client";
+import {
+  AssignmentStatus,
+  RotationMode,
+  WeeklyScheduleStatus,
+} from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { generateBalancedRotation } from "@/lib/scheduling/rotation";
 import {
   cycleWeekIndexFromAnchor,
   fromDateOnlyUTC,
@@ -47,7 +52,6 @@ function resolveCycleAssignments(
   if (index >= 0 && index <= 5) {
     return getFixedCycleAssignments(index);
   }
-  // Au-delà du cycle papier (ou avant l'ancre) → aléatoire avec contrainte filles
   return generateRandomCycleAssignments(previous);
 }
 
@@ -117,53 +121,67 @@ export async function generateScheduleForProperty(
     },
   });
 
-  const previousFromLastWeek: CycleAssignment[] | undefined =
-    previousSchedule?.assignments
-      .map((a) => {
-        const key = TASK_POSITION_TO_KEY[a.task.position];
-        if (!key) return null;
-        return { taskKey: key as TaskKey, roomNumber: a.room.number };
-      })
-      .filter((x): x is CycleAssignment => x !== null);
+  let rotation: { roomId: string; taskId: string }[];
 
-  const previous =
-    replacedCycle && replacedCycle.length > 0
-      ? replacedCycle
-      : previousFromLastWeek;
+  if (property.rotationMode === RotationMode.BALANCED) {
+    const prevForBalance =
+      previousSchedule?.assignments.map((a) => ({
+        roomId: a.roomId,
+        taskId: a.taskId,
+      })) ?? [];
 
-  if (!property.cycleAnchorWeekStart) {
-    // Nouvelle coloc : cette semaine = semaine 1 du cycle papier
-    await prisma.property.update({
-      where: { id: propertyId },
-      data: { cycleAnchorWeekStart: weekStart },
-    });
-    property.cycleAnchorWeekStart = weekStart;
-  }
+    rotation = generateBalancedRotation(
+      rooms.map((r) => ({ id: r.id, number: r.number })),
+      tasks.map((t) => ({ id: t.id, difficulty: t.difficulty })),
+      prevForBalance,
+    );
+  } else {
+    const previousFromLastWeek: CycleAssignment[] | undefined =
+      previousSchedule?.assignments
+        .map((a) => {
+          const key = TASK_POSITION_TO_KEY[a.task.position];
+          if (!key) return null;
+          return { taskKey: key as TaskKey, roomNumber: a.room.number };
+        })
+        .filter((x): x is CycleAssignment => x !== null);
 
-  const cyclePairs = resolveCycleAssignments(
-    weekStartLocal,
-    fromDateOnlyUTC(property.cycleAnchorWeekStart),
-    previous,
-  );
+    const previous =
+      replacedCycle && replacedCycle.length > 0
+        ? replacedCycle
+        : previousFromLastWeek;
 
-  const taskByKey = new Map<TaskKey, (typeof tasks)[number]>();
-  for (const task of tasks) {
-    const key = TASK_POSITION_TO_KEY[task.position];
-    if (key) taskByKey.set(key, task);
-  }
-
-  const roomByNumber = new Map(rooms.map((r) => [r.number, r]));
-
-  const rotation: { roomId: string; taskId: string }[] = [];
-  for (const pair of cyclePairs) {
-    const room = roomByNumber.get(pair.roomNumber);
-    const task = taskByKey.get(pair.taskKey);
-    if (!room || !task) {
-      throw new Error(
-        `Mapping cycle invalide: tâche ${pair.taskKey} → chambre ${pair.roomNumber}`,
-      );
+    if (!property.cycleAnchorWeekStart) {
+      await prisma.property.update({
+        where: { id: propertyId },
+        data: { cycleAnchorWeekStart: weekStart },
+      });
+      property.cycleAnchorWeekStart = weekStart;
     }
-    rotation.push({ roomId: room.id, taskId: task.id });
+
+    const cyclePairs = resolveCycleAssignments(
+      weekStartLocal,
+      fromDateOnlyUTC(property.cycleAnchorWeekStart),
+      previous,
+    );
+
+    const taskByKey = new Map<TaskKey, (typeof tasks)[number]>();
+    for (const task of tasks) {
+      const key = TASK_POSITION_TO_KEY[task.position];
+      if (key) taskByKey.set(key, task);
+    }
+
+    const roomByNumber = new Map(rooms.map((r) => [r.number, r]));
+    rotation = [];
+    for (const pair of cyclePairs) {
+      const room = roomByNumber.get(pair.roomNumber);
+      const task = taskByKey.get(pair.taskKey);
+      if (!room || !task) {
+        throw new Error(
+          `Mapping cycle invalide: tâche ${pair.taskKey} → chambre ${pair.roomNumber}`,
+        );
+      }
+      rotation.push({ roomId: room.id, taskId: task.id });
+    }
   }
 
   const schedule = await prisma.$transaction(async (tx) => {

@@ -45,7 +45,8 @@ export default async function PlanningPage() {
               {format(schedule.deadline, "EEEE d MMM HH:mm", { locale: fr })}
             </>
           )}
-          {property.cycleAnchorWeekStart && (
+          {property.cycleAnchorWeekStart &&
+            property.rotationMode === "PAPER" && (
             <>
               {" "}
               · cycle papier depuis le{" "}
@@ -53,6 +54,9 @@ export default async function PlanningPage() {
                 locale: fr,
               })}
             </>
+          )}
+          {property.rotationMode === "BALANCED" && (
+            <> · 1 tâche par chambre</>
           )}
         </p>
       </div>

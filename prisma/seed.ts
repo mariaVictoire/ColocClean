@@ -186,6 +186,7 @@ async function main() {
       deadlineTime: "18:00",
       photoRequired: false,
       primaryColor: "#0F766E",
+      rotationMode: "PAPER",
       whatsappFridayMessage: DEFAULT_WHATSAPP.friday,
       whatsappFriendlyMessage: DEFAULT_WHATSAPP.friendly,
       whatsappLateMessage: DEFAULT_WHATSAPP.late,

@@ -1,18 +1,26 @@
 import { prisma } from "@/lib/db";
 import {
+  BALANCED_TASK_DEFS,
   createQrToken,
-  DEFAULT_TASK_DEFS,
   DEFAULT_WHATSAPP_TEMPLATES,
+  type TaskDef,
 } from "@/lib/property-defaults";
 import { weekBoundsFor } from "@/lib/scheduling/schedule";
+import { RotationMode } from "@prisma/client";
 
 /** Crée une colocation complète : 6 chambres + 6 tâches (sans planning). */
 export async function createPropertyForOwner(
   ownerId: string,
   name: string,
   roomCount = 6,
+  options?: {
+    taskDefs?: TaskDef[];
+    rotationMode?: RotationMode;
+  },
 ) {
   const { weekStart } = weekBoundsFor(new Date());
+  const taskDefs = options?.taskDefs ?? BALANCED_TASK_DEFS;
+  const rotationMode = options?.rotationMode ?? RotationMode.BALANCED;
 
   return prisma.$transaction(async (tx) => {
     const property = await tx.property.create({
@@ -21,6 +29,7 @@ export async function createPropertyForOwner(
         ownerId,
         roomCount,
         cycleAnchorWeekStart: weekStart,
+        rotationMode,
         whatsappFridayMessage: DEFAULT_WHATSAPP_TEMPLATES.friday,
         whatsappFriendlyMessage: DEFAULT_WHATSAPP_TEMPLATES.friendly,
         whatsappLateMessage: DEFAULT_WHATSAPP_TEMPLATES.late,
@@ -40,8 +49,8 @@ export async function createPropertyForOwner(
       });
     }
 
-    for (let i = 0; i < DEFAULT_TASK_DEFS.length; i++) {
-      const def = DEFAULT_TASK_DEFS[i];
+    for (let i = 0; i < taskDefs.length; i++) {
+      const def = taskDefs[i];
       await tx.task.create({
         data: {
           propertyId: property.id,
