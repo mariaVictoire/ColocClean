@@ -4,6 +4,7 @@ import {
   DEFAULT_TASK_DEFS,
   DEFAULT_WHATSAPP_TEMPLATES,
 } from "@/lib/property-defaults";
+import { weekBoundsFor } from "@/lib/scheduling/schedule";
 
 /** Crée une colocation complète : 6 chambres + 6 tâches (sans planning). */
 export async function createPropertyForOwner(
@@ -11,12 +12,15 @@ export async function createPropertyForOwner(
   name: string,
   roomCount = 6,
 ) {
+  const { weekStart } = weekBoundsFor(new Date());
+
   return prisma.$transaction(async (tx) => {
     const property = await tx.property.create({
       data: {
         name,
         ownerId,
         roomCount,
+        cycleAnchorWeekStart: weekStart,
         whatsappFridayMessage: DEFAULT_WHATSAPP_TEMPLATES.friday,
         whatsappFriendlyMessage: DEFAULT_WHATSAPP_TEMPLATES.friendly,
         whatsappLateMessage: DEFAULT_WHATSAPP_TEMPLATES.late,

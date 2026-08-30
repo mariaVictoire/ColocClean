@@ -132,9 +132,12 @@ export async function generateScheduleForProperty(
       : previousFromLastWeek;
 
   if (!property.cycleAnchorWeekStart) {
-    throw new Error(
-      "cycleAnchorWeekStart manquant : définissez le lundi de la semaine 1 du planning papier.",
-    );
+    // Nouvelle coloc : cette semaine = semaine 1 du cycle papier
+    await prisma.property.update({
+      where: { id: propertyId },
+      data: { cycleAnchorWeekStart: weekStart },
+    });
+    property.cycleAnchorWeekStart = weekStart;
   }
 
   const cyclePairs = resolveCycleAssignments(
