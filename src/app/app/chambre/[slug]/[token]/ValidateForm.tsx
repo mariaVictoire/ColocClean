@@ -181,7 +181,7 @@ export function ValidateForm({
           Rappel — ce qu’il faut faire
         </h2>
         <p className="mt-1 text-sm text-stone-600">
-          Liste indicative pour vous guider. Pas besoin de cocher chaque point.
+          Liste indicative pour vous guider.
         </p>
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm text-stone-800">
           {items.map((item) => (
@@ -197,8 +197,7 @@ export function ValidateForm({
         <p className="mt-2 text-sm leading-relaxed text-teal-900/90">
           1) Prenez une photo ou une courte vidéo avec l’appareil photo · 2)
           Envoyez-la via WhatsApp (choisissez WhatsApp + le bailleur). La
-          validation se fait après l’envoi. Rien n’est stocké dans
-          l’application.
+          validation se fait après l’envoi.
         </p>
 
         <label className="mt-4 block text-sm font-medium text-stone-700">
