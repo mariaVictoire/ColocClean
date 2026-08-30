@@ -11,7 +11,17 @@ type Item = {
 
 const SHARE_TIMEOUT_MS = 45_000;
 
-async function sharePhoto(
+function isVideoFile(file: File) {
+  return file.type.startsWith("video/");
+}
+
+function proofFileName(file: File) {
+  if (file.name) return file.name;
+  if (isVideoFile(file)) return "preuve-menage.mp4";
+  return "preuve-menage.jpg";
+}
+
+async function shareProof(
   file: File,
 ): Promise<"shared" | "aborted" | "unsupported" | "timeout"> {
   if (typeof navigator === "undefined" || !navigator.canShare) {
@@ -21,8 +31,8 @@ async function sharePhoto(
   const shareFile =
     file.type && file.name
       ? file
-      : new File([file], "preuve-menage.jpg", {
-          type: file.type || "image/jpeg",
+      : new File([file], proofFileName(file), {
+          type: file.type || (isVideoFile(file) ? "video/mp4" : "image/jpeg"),
         });
 
   if (!navigator.canShare({ files: [shareFile] })) {
@@ -64,22 +74,24 @@ export function ValidateForm({
   weekLabel: string;
 }) {
   const router = useRouter();
-  const cameraRef = useRef<HTMLInputElement>(null);
+  const mediaRef = useRef<HTMLInputElement>(null);
   const [comment, setComment] = useState("");
-  const [photo, setPhoto] = useState<File | null>(null);
+  const [media, setMedia] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
+  const mediaIsVideo = media ? isVideoFile(media) : false;
+
   useEffect(() => {
-    if (!photo) {
+    if (!media) {
       setPreviewUrl(null);
       return;
     }
-    const url = URL.createObjectURL(photo);
+    const url = URL.createObjectURL(media);
     setPreviewUrl(url);
     return () => URL.revokeObjectURL(url);
-  }, [photo]);
+  }, [media]);
 
   function openLandlordChat() {
     if (!ownerWhatsappNumber) return;
@@ -92,9 +104,9 @@ export function ValidateForm({
     }
   }
 
-  function onTakePhoto() {
+  function onPickMedia() {
     setError(null);
-    cameraRef.current?.click();
+    mediaRef.current?.click();
   }
 
   function onSendAndValidate() {
@@ -106,16 +118,16 @@ export function ValidateForm({
       );
       return;
     }
-    if (!photo) {
-      setError("Prenez d’abord une photo.");
+    if (!media) {
+      setError("Prenez d’abord une photo ou une vidéo.");
       return;
     }
 
-    const photoFile = photo;
+    const mediaFile = media;
 
     startTransition(async () => {
-      // Important : ce clic est un geste utilisateur → le partage peut s’ouvrir
-      const shareResult = await sharePhoto(photoFile);
+      // Geste utilisateur → le partage peut s’ouvrir (WhatsApp)
+      const shareResult = await shareProof(mediaFile);
 
       if (shareResult === "aborted") {
         setError("Envoi annulé. La tâche n’est pas validée.");
@@ -130,20 +142,19 @@ export function ValidateForm({
       }
 
       if (shareResult === "unsupported") {
-        // Repli : ouvre la discussion bailleur (texte). La photo reste à joindre.
         openLandlordChat();
         setError(
-          "Partage photo indisponible. WhatsApp s’ouvre : joignez la photo à la main.",
+          "Partage indisponible. WhatsApp s’ouvre : joignez la photo ou la vidéo à la main.",
         );
         return;
       }
 
+      // Pas d’upload serveur : la preuve reste uniquement sur WhatsApp
       const body = new FormData();
       body.set("assignmentId", assignmentId);
       body.set("token", token);
       body.set("slug", slug);
       body.set("comment", comment);
-      body.set("photo", photoFile);
 
       const res = await fetch("/api/public/validate", {
         method: "POST",
@@ -154,7 +165,7 @@ export function ValidateForm({
       } | null;
 
       if (!res.ok) {
-        setError(data?.error ?? "Photo envoyée, mais validation impossible.");
+        setError(data?.error ?? "Envoyé, mais validation impossible.");
         return;
       }
 
@@ -183,8 +194,9 @@ export function ValidateForm({
           Vous avez fait votre tâche ?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-teal-900/90">
-          1) Prenez la photo · 2) Envoyez-la via WhatsApp (choisissez WhatsApp +
-          le bailleur). La validation se fait après l’envoi.
+          1) Prenez une photo ou une courte vidéo · 2) Envoyez-la via WhatsApp
+          (choisissez WhatsApp + le bailleur). La validation se fait après
+          l’envoi. Rien n’est stocké dans l’application.
         </p>
 
         <label className="mt-4 block text-sm font-medium text-stone-700">
@@ -199,14 +211,13 @@ export function ValidateForm({
         </label>
 
         <input
-          ref={cameraRef}
+          ref={mediaRef}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic"
-          capture="environment"
+          accept="image/*,video/*"
           className="sr-only"
           onChange={(e) => {
             const file = e.target.files?.[0] ?? null;
-            setPhoto(file);
+            setMedia(file);
             setError(null);
             e.target.value = "";
           }}
@@ -214,18 +225,31 @@ export function ValidateForm({
 
         <button
           type="button"
-          onClick={onTakePhoto}
+          onClick={onPickMedia}
           disabled={pending}
           className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-xl border-2 border-dashed border-teal-600 bg-white text-base font-semibold text-teal-900 disabled:opacity-60"
         >
-          {photo ? "Reprendre une photo" : "Prendre une photo"}
+          {media
+            ? mediaIsVideo
+              ? "Reprendre une vidéo"
+              : "Reprendre une photo"
+            : "Photo ou vidéo"}
         </button>
 
-        {previewUrl && (
+        {previewUrl && mediaIsVideo && (
+          <video
+            src={previewUrl}
+            controls
+            playsInline
+            className="mt-3 max-h-48 w-full rounded-xl bg-stone-900 object-contain"
+          />
+        )}
+
+        {previewUrl && !mediaIsVideo && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={previewUrl}
-            alt="Aperçu de la photo"
+            alt="Aperçu de la preuve"
             className="mt-3 max-h-48 w-full rounded-xl object-cover"
           />
         )}
@@ -242,7 +266,7 @@ export function ValidateForm({
         <button
           type="button"
           onClick={onSendAndValidate}
-          disabled={pending || !photo}
+          disabled={pending || !media}
           className="touch-target mt-4 inline-flex w-full items-center justify-center rounded-xl bg-teal-700 text-base font-semibold text-white disabled:opacity-60"
         >
           {pending ? "Ouverture du partage…" : "Envoyer sur WhatsApp et valider"}

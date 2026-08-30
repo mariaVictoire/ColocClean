@@ -2,10 +2,13 @@ import { NextResponse } from "next/server";
 import { AssignmentStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { parseRoomSlug } from "@/lib/security/tokens";
-import { assertValidPhoto, getStorageAdapter } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
+/**
+ * Valide une tâche après envoi WhatsApp côté téléphone.
+ * Aucune photo/vidéo n’est stockée sur le serveur : la preuve reste sur WhatsApp.
+ */
 export async function POST(request: Request) {
   try {
     const form = await request.formData();
@@ -13,7 +16,6 @@ export async function POST(request: Request) {
     const token = String(form.get("token") ?? "");
     const slug = String(form.get("slug") ?? "");
     const comment = String(form.get("comment") ?? "").slice(0, 1000);
-    const photo = form.get("photo");
 
     const number = parseRoomSlug(slug);
     if (!assignmentId || !number || !/^[a-f0-9]{64}$/i.test(token)) {
@@ -50,32 +52,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!(photo instanceof File) || photo.size <= 0) {
-      return NextResponse.json(
-        { error: "Une photo est obligatoire." },
-        { status: 400 },
-      );
-    }
-
-    const buffer = Buffer.from(await photo.arrayBuffer());
-    const mimeType = photo.type || "image/jpeg";
-    assertValidPhoto(mimeType, buffer.byteLength);
-
-    let photoUrl: string | null = null;
-    try {
-      const storage = await getStorageAdapter();
-      const uploaded = await storage.upload(buffer, {
-        filename: photo.name || "photo.jpg",
-        mimeType,
-        folder: "validations",
-      });
-      photoUrl = uploaded.url;
-    } catch (storageError) {
-      // Le partage WhatsApp côté téléphone reste la preuve principale ;
-      // le stockage serveur est un bonus (historique).
-      console.warn("[validate] stockage photo:", storageError);
-    }
-
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       request.headers.get("x-real-ip") ??
@@ -90,7 +66,7 @@ export async function POST(request: Request) {
           status: AssignmentStatus.COMPLETED,
           completedAt: now,
           comment: comment || null,
-          photoUrl,
+          photoUrl: null,
           clientIp: ip,
           userAgent,
         },
@@ -118,7 +94,7 @@ export async function POST(request: Request) {
       }
     });
 
-    return NextResponse.json({ ok: true, photoUrl });
+    return NextResponse.json({ ok: true });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Erreur serveur.";
