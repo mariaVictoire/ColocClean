@@ -74,7 +74,8 @@ export function ValidateForm({
   weekLabel: string;
 }) {
   const router = useRouter();
-  const mediaRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLInputElement>(null);
   const [comment, setComment] = useState("");
   const [media, setMedia] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -104,9 +105,9 @@ export function ValidateForm({
     }
   }
 
-  function onPickMedia() {
+  function onMediaPicked(file: File | null) {
+    setMedia(file);
     setError(null);
-    mediaRef.current?.click();
   }
 
   function onSendAndValidate() {
@@ -194,9 +195,10 @@ export function ValidateForm({
           Vous avez fait votre tâche ?
         </h2>
         <p className="mt-2 text-sm leading-relaxed text-teal-900/90">
-          1) Prenez une photo ou une courte vidéo · 2) Envoyez-la via WhatsApp
-          (choisissez WhatsApp + le bailleur). La validation se fait après
-          l’envoi. Rien n’est stocké dans l’application.
+          1) Prenez une photo ou une courte vidéo avec l’appareil photo · 2)
+          Envoyez-la via WhatsApp (choisissez WhatsApp + le bailleur). La
+          validation se fait après l’envoi. Rien n’est stocké dans
+          l’application.
         </p>
 
         <label className="mt-4 block text-sm font-medium text-stone-700">
@@ -210,31 +212,54 @@ export function ValidateForm({
           />
         </label>
 
+        {/* capture=environment : ouvre la caméra (pas la galerie) sur la plupart des téléphones */}
         <input
-          ref={mediaRef}
+          ref={photoRef}
           type="file"
-          accept="image/*,video/*"
+          accept="image/*"
+          capture="environment"
           className="sr-only"
           onChange={(e) => {
-            const file = e.target.files?.[0] ?? null;
-            setMedia(file);
-            setError(null);
+            onMediaPicked(e.target.files?.[0] ?? null);
+            e.target.value = "";
+          }}
+        />
+        <input
+          ref={videoRef}
+          type="file"
+          accept="video/*"
+          capture="environment"
+          className="sr-only"
+          onChange={(e) => {
+            onMediaPicked(e.target.files?.[0] ?? null);
             e.target.value = "";
           }}
         />
 
-        <button
-          type="button"
-          onClick={onPickMedia}
-          disabled={pending}
-          className="touch-target mt-3 inline-flex w-full items-center justify-center rounded-xl border-2 border-dashed border-teal-600 bg-white text-base font-semibold text-teal-900 disabled:opacity-60"
-        >
-          {media
-            ? mediaIsVideo
-              ? "Reprendre une vidéo"
-              : "Reprendre une photo"
-            : "Photo ou vidéo"}
-        </button>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              photoRef.current?.click();
+            }}
+            disabled={pending}
+            className="touch-target inline-flex items-center justify-center rounded-xl border-2 border-dashed border-teal-600 bg-white px-2 text-sm font-semibold text-teal-900 disabled:opacity-60"
+          >
+            {media && !mediaIsVideo ? "Reprendre photo" : "Prendre photo"}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              videoRef.current?.click();
+            }}
+            disabled={pending}
+            className="touch-target inline-flex items-center justify-center rounded-xl border-2 border-dashed border-teal-600 bg-white px-2 text-sm font-semibold text-teal-900 disabled:opacity-60"
+          >
+            {media && mediaIsVideo ? "Reprendre vidéo" : "Filmer vidéo"}
+          </button>
+        </div>
 
         {previewUrl && mediaIsVideo && (
           <video
