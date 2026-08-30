@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
 
 const RALPH = {
   email: "ralph@coloclean.com",
-  password: "RalphDemo123!",
+  password: "ralphDemo123",
   name: "Ralph",
   colocations: [
     "Colocation Ralph 1",

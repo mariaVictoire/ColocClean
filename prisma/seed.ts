@@ -162,7 +162,7 @@ async function main() {
   await prisma.property.deleteMany();
   await prisma.user.deleteMany();
 
-  const passwordHash = await bcrypt.hash("DemoOwner123!", 12);
+  const passwordHash = await bcrypt.hash("arnoldDemo123§", 12);
 
   const owner = await prisma.user.create({
     data: {
@@ -322,7 +322,7 @@ async function main() {
   console.log("");
   console.log("Identifiants de démonstration :");
   console.log("  Email    : arnold@coloclean.com");
-  console.log("  Mot de passe : DemoOwner123!");
+  console.log("  Mot de passe : arnoldDemo123§");
   console.log("");
   console.log("Tokens QR (exemples) :");
   rooms.forEach((room) => {

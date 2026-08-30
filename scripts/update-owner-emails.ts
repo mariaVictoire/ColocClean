@@ -1,11 +1,15 @@
 /**
- * Met à jour les comptes : Arnold + Ralph.
+ * Met à jour les comptes : Arnold + Ralph (emails + mots de passe).
  * Usage : npx tsx scripts/update-owner-emails.ts
  */
 import "dotenv/config";
+import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
+
+const ARNOLD_PASSWORD = "arnoldDemo123§";
+const RALPH_PASSWORD = "ralphDemo123";
 
 async function main() {
   // Arnold (ancien owner@coloclean.demo)
@@ -31,9 +35,10 @@ async function main() {
       data: {
         email: "arnold@coloclean.com",
         name: "Arnold",
+        passwordHash: await bcrypt.hash(ARNOLD_PASSWORD, 12),
       },
     });
-    console.log(`✔ Arnold → arnold@coloclean.com`);
+    console.log(`✔ Arnold → arnold@coloclean.com / ${ARNOLD_PASSWORD}`);
   } else {
     console.warn("⚠ Compte Arnold introuvable");
   }
@@ -62,6 +67,7 @@ async function main() {
       data: {
         email: "ralph@coloclean.com",
         name: "Ralph",
+        passwordHash: await bcrypt.hash(RALPH_PASSWORD, 12),
       },
     });
 
@@ -79,7 +85,7 @@ async function main() {
       }
     }
 
-    console.log(`✔ Ralph → ralph@coloclean.com`);
+    console.log(`✔ Ralph → ralph@coloclean.com / ${RALPH_PASSWORD}`);
   } else {
     console.warn("⚠ Compte Ralph introuvable");
   }
