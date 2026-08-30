@@ -26,8 +26,8 @@ export default async function AdminProtectedLayout({
   }
 
   return (
-    <div className="flex min-h-dvh flex-col bg-stone-50">
-      <header className="sticky top-0 z-30 border-b border-stone-200/80 bg-white/95 backdrop-blur">
+    <div className="flex h-dvh flex-col overflow-hidden bg-stone-50">
+      <header className="shrink-0 border-b border-stone-200/80 bg-white">
         <div className="mx-auto flex w-full max-w-5xl flex-col gap-2 px-4 py-3 pt-[max(0.75rem,var(--safe-top))] sm:px-6">
           <div className="flex items-center justify-between gap-3">
             <Link href="/admin" className="min-w-0">
@@ -56,7 +56,7 @@ export default async function AdminProtectedLayout({
         </div>
       </header>
 
-      <div className="mx-auto w-full max-w-5xl flex-1 px-4 py-5 pb-[calc(5.25rem+var(--safe-bottom))] sm:px-6 sm:py-8">
+      <div className="mx-auto w-full max-w-5xl flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-6 sm:py-8">
         {children}
       </div>
 

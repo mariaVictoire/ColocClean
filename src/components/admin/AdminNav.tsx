@@ -71,7 +71,7 @@ export function AdminNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-stone-200 bg-white pb-[max(0.5rem,var(--safe-bottom))]"
+      className="shrink-0 border-t border-stone-200 bg-white pb-[max(0.5rem,var(--safe-bottom))]"
       aria-label="Navigation principale"
     >
       <ul className="mx-auto flex max-w-5xl items-stretch justify-between gap-0.5 px-1 pt-1.5">
@@ -88,7 +88,7 @@ export function AdminNav() {
             <li key={link.href} className="min-w-0 flex-1">
               <Link
                 href={link.href}
-                className={`flex flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1 text-[0.7rem] leading-tight font-medium ${
+                className={`flex flex-col items-center justify-center gap-0.5 rounded-lg px-0.5 py-1.5 text-[0.7rem] leading-tight font-medium ${
                   active
                     ? "text-teal-800"
                     : "text-stone-500 active:bg-stone-100"
