@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { appConfig } from "@/config/app";
 import { requireOwner } from "@/lib/auth-helpers";
-import { signOutAction } from "@/lib/actions/auth";
 
 export const metadata = {
   title: `Plus — ${appConfig.name}`,
@@ -60,15 +59,6 @@ export default async function AdminPlusPage() {
           </li>
         ))}
       </ul>
-
-      <form action={signOutAction}>
-        <button
-          type="submit"
-          className="touch-target inline-flex w-full items-center justify-center rounded-xl border border-stone-300 bg-white px-4 text-sm font-semibold text-stone-800 hover:bg-stone-50 active:bg-stone-100"
-        >
-          Quitter
-        </button>
-      </form>
     </main>
   );
 }

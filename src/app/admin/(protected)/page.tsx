@@ -154,22 +154,6 @@ export default async function AdminDashboardPage() {
           </ul>
         )}
       </section>
-
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
-        {[
-          { href: "/admin/whatsapp", label: "Rappels WhatsApp" },
-          { href: "/admin/qr", label: "QR codes" },
-          { href: "/admin/chambres", label: "Gérer les chambres" },
-        ].map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="touch-target flex items-center justify-center rounded-2xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-800 hover:border-teal-300 active:bg-stone-50"
-          >
-            {item.label}
-          </Link>
-        ))}
-      </div>
     </main>
   );
 }
